@@ -1,8 +1,7 @@
 import numpy as np
 import torch
-import sys
-sys.path.append('../')
-from ops import get_hfta_op_for, testcase_automator
+
+from hfta.ops import get_hfta_op_for, testcase_automator
 
 
 def testcase(B=3, N=32, C=5120, HWin=16, p=0.4):

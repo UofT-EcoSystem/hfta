@@ -2,9 +2,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-import sys
-sys.path.append('../')
-from ops import get_hfta_op_for, testcase_automator
+from hfta.ops import get_hfta_op_for, testcase_automator
 
 
 def testcase_MaxPool2d(

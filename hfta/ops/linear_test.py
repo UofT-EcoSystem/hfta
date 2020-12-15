@@ -2,9 +2,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-import sys
-sys.path.append('../')
-from ops import get_hfta_op_for, testcase_automator
+from hfta.ops import get_hfta_op_for, testcase_automator
 
 
 def testcase(B=3, N=32, L=8, in_features=20, out_features=50, bias=True):
