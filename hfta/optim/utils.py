@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import numpy as np
 
-from ops import get_hfta_op_for
+from hfta.ops import get_hfta_op_for
 
 
 class _TestNet(nn.Module):

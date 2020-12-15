@@ -2,10 +2,8 @@ import numpy as np
 import torch
 import torch.optim as optim
 
-import sys
-sys.path.append('../')
-from ops import testcase_automator
-from optim import get_hfta_optim_for, index_array_or_return_scalar
+from hfta.ops import testcase_automator
+from hfta.optim import get_hfta_optim_for, index_array_or_return_scalar
 from utils import _TestNet, _optim_testing_procedure
 
 

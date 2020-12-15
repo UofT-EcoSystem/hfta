@@ -4,11 +4,9 @@ import torch
 import torch.optim as optim
 import torch.optim.lr_scheduler as lr_scheduler
 
-import sys
-sys.path.append('../')
-from ops import testcase_automator
-from optim import (get_hfta_optim_for, get_hfta_lr_scheduler_for,
-                   index_array_or_return_scalar)
+from hfta.ops import testcase_automator
+from hfta.optim import (get_hfta_optim_for, get_hfta_lr_scheduler_for,
+                        index_array_or_return_scalar)
 from utils import (_TestNet, _init_test_nets_with_grads,
                    _take_step_on_test_optimizers, _verify_test_nets_params)
 
