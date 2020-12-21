@@ -1,7 +1,11 @@
+import os
 import pandas as pd
 import psutil
 import subprocess
+import threading
 import time
+
+from .utils import run_command
 
 DCGM_FIELDS = {
     'DCGM_FI_PROF_GR_ENGINE_ACTIVE': 1001,
@@ -47,7 +51,7 @@ class DcgmMonitor:
           "DCGM_FI_DEV_FB_USED",
           "DCGM_FI_DEV_MEM_COPY_UTIL",
       ]
-    self.field_ids = [DCGM_FIELDS[f] for f in fields]
+    self.field_ids = [DCGM_FIELDS[f] for f in self.fields]
     self.field_ids_str = ','.join(map(str, self.field_ids))
     self.reset()
 
@@ -68,8 +72,7 @@ class DcgmMonitor:
     self.metrics['host_mem_total'].append(mem.total)
     self.metrics['host_mem_available'].append(mem.available)
     self.metrics['timestamp'].append(time.time())
-    dcgmi_out = subprocess.check_output(
-        ['dcgmi', 'dmon', '-e', self.field_ids_str, '-c', '5'],)
+    dcgmi_out = run_command('dcgmi dmon -e {} -c 5'.format(self.field_ids_str))
     dcgmi_samples = {f: [] for f in self.fields}
     for line in dcgmi_out.split('\n')[-4:-1]:
       # THIS ASSUMES THAT THE OUTPUT OF DCGM MONITOR HAS THE FORMAT GPU X METRIC1 METRIC2 ...
@@ -94,3 +97,21 @@ def dcgm_monitor_thread(monitor, outdir):
     monitor.sample_metrics()
     time.sleep(9)
   monitor.save(outdir)
+
+
+def dcgm_monitor_start(monitor, outdir):
+  run_command('nv-hostengine')
+  t = threading.Thread(
+      target=dcgm_monitor_thread,
+      name='DCGM Monitor Thread',
+      args=(monitor, outdir),
+  )
+  t.start()
+  return t
+
+
+def dcgm_monitor_stop(monitor, thread):
+  monitor.to_shutdown = True
+  thread.join()
+  monitor.reset()
+  run_command('nv-hostengine -t')

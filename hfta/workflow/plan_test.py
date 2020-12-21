@@ -1,31 +1,17 @@
 import random
 
-from hfta.workflow.planner import find_max_B, expovariate_plan
-from hfta.workflow.runner import Runner
-
-
-class MockRunner(Runner):
-
-  def dry_run(self, B):
-    return self._probe(B)
-
-  def _init_Bs(self):
-    return [1]
+from hfta.workflow.plan import find_max_B, expovariate_plan
 
 
 def testcase_find_max_B(expected_max_B, dry_run_repeats, unstable_prob):
 
-  def mock_trial(B, outdir):
-    raise NotImplementedError("mock_trial should not be called!")
-
-  def mock_probe(B):
+  def try_B(B):
     if random.random() > unstable_prob:
       return B <= expected_max_B
     else:
       return B <= random.randint(expected_max_B + 1, 2 * expected_max_B)
 
-  runner = MockRunner(mock_trial, mock_probe, 'mock_outdir_prefix')
-  actual_max_B = find_max_B(runner, dry_run_repeats=dry_run_repeats)
+  actual_max_B = find_max_B(try_B, dry_run_repeats=dry_run_repeats)
   assert actual_max_B == expected_max_B
 
 

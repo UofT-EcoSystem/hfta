@@ -1,11 +1,11 @@
 import random
 
 
-def find_max_B(runner, dry_run_repeats=5):
+def find_max_B(try_B, dry_run_repeats=5):
 
   def fit(B):
     for _ in range(dry_run_repeats):
-      if not runner.dry_run(B):
+      if not try_B(B):
         return False
     return True
 
