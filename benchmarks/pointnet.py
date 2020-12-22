@@ -69,7 +69,10 @@ def main(args):
               'w',
           ),
           check=True,
-          cwd='../examples/pointnet/',
+          cwd=os.path.join(
+              os.path.abspath(os.path.expanduser(os.path.dirname(__file__))),
+              '../examples/pointnet/',
+          ),
       )
     except subprocess.CalledProcessError as e:
       logging.error(e)
@@ -136,4 +139,5 @@ if __name__ == '__main__':
   rearrange_runner_kwargs(args)
   logging.basicConfig(level=extract_logging_level(args))
   args.outdir_root = os.path.abspath(os.path.expanduser(args.outdir_root))
+  args.dataroot = os.path.abspath(os.path.expanduser(args.dataroot))
   main(args)

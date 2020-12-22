@@ -1,5 +1,6 @@
+#!/bin/bash
 
-download_shapenet() {
+_download_shapenet() {
   if [ ! -d "datasets/shapenetcore_partanno_segmentation_benchmark_v0" ]; then
     local url=https://shapenet.cs.stanford.edu/ericyi/shapenetcore_partanno_segmentation_benchmark_v0.zip
     local zip_path=datasets/shapenetcore_partanno_segmentation_benchmark_v0.zip
@@ -10,7 +11,7 @@ download_shapenet() {
 }
 
 prepare_pointnet_cls() {
-  download_shapenet
+  _download_shapenet
   python examples/pointnet/train_classification.py \
     --epochs 1 \
     --iters-per-epoch 1000 \
@@ -20,7 +21,7 @@ prepare_pointnet_cls() {
 }
 
 prepare_pointnet_seg() {
-  download_shapenet
+  _download_shapenet
   python examples/pointnet/train_segmentation.py \
     --epochs 1 \
     --iters-per-epoch 1000 \
