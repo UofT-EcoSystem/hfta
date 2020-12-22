@@ -162,6 +162,8 @@ def main(args):
     for i, data in enumerate(dataloader, 0):
       if i > args.iters_per_epoch:
         break
+      if args.warmup_data_loading:
+        continue
 
       points, target = data
       target = target[:, 0]
@@ -210,6 +212,8 @@ def main(args):
       total_correct = torch.zeros(max(B, 1), device=device)
       total_testset = 0
       for data in testdataloader:
+        if args.warmup_data_loading:
+          continue
         points, target = data
         target = target[:, 0]
         points, target = points.to(device), target.to(device)
@@ -300,6 +304,13 @@ def attach_config_args(parser=argparse.ArgumentParser()):
       type=int,
       help='Seed',
       default=1117,
+  )
+  parser.add_argument(
+      '--warmup-data-loading',
+      default=False,
+      action='store_true',
+      help='go over the training and validation loops without performing '
+      'forward and backward passes',
   )
   return parser
 

@@ -130,3 +130,6 @@ dmypy.json
 
 # Third party installation package.
 *.deb
+
+# datasets
+datasets/shapenetcore_partanno_segmentation_benchmark_v0/

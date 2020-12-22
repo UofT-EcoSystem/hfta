@@ -124,6 +124,13 @@ parser.add_argument(
     action='store_true',
     help='Enable AMP; only used when --device is cuda',
 )
+parser.add_argument(
+    '--warmup-data-loading',
+    default=False,
+    action='store_true',
+    help='go over the training loop without performing the forward and '
+    'backward passes',
+)
 
 opt = parser.parse_args()
 print(opt)
@@ -236,6 +243,8 @@ for epoch in range(opt.epochs):
   for i, data in enumerate(dataloader, 0):
     if i > opt.iters_per_epoch:
       break
+    if opt.warmup_data_loading:
+      continue
     points, target = data
     points, target = points.to(device), target.to(device) - 1
     N = points.size(0)
