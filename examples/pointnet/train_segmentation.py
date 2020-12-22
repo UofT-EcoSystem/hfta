@@ -276,4 +276,5 @@ for epoch in range(opt.epochs):
   #           '%s/seg_model_%s_%d.pth' % (opt.outf, opt.class_choice, epoch))
 if opt.device == 'xla':
   print(met.metrics_report())
-pd.DataFrame(timing).to_csv('{}/timing.csv'.format(opt.outf))
+if opt.outf is not None:
+  pd.DataFrame(timing).to_csv('{}/timing.csv'.format(opt.outf))
