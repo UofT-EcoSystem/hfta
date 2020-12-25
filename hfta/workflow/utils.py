@@ -16,6 +16,28 @@ def run_command(cmd, input=None):
   return stdout
 
 
+def _init_precs(device, device_model):
+  if device == 'cuda':
+    precs = ['fp32', 'amp']
+  elif device == 'xla':
+    precs = ['bf16']
+  else:
+    precs = ['fp32']
+  return precs
+
+
+def _init_modes(device, device_model):
+  if device == 'cuda':
+    modes = ['serial', 'concurrent', 'mps', 'hfta']
+    if device_model == 'a100':
+      modes += ['mig']
+  elif device == 'xla':
+    modes = ['serial', 'hfta']
+  else:
+    modes = ['serial', 'concurrent', 'hfta']
+  return modes
+
+
 def attach_args(parser=argparse.ArgumentParser()):
   parser.add_argument(
       '--log-level',

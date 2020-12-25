@@ -24,6 +24,13 @@ setup(
         'Programming Language :: Python :: 3 :: Only',
     ],
     packages=find_packages(),
+    entry_points={
+        'console_scripts': [
+            'timing_parser=hfta.workflow.timing:timing_parser_main'
+        ],
+    },
     python_requires='>=3.6',
-    install_requires=[],
+    install_requires=[
+        'pandas', 'numpy', 'scipy', 'matplotlib', 'psutil', 'torch>=1.6.0'
+    ],
 )

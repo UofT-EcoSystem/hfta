@@ -19,7 +19,7 @@ RUN curl -o ~/miniconda.sh \
     /opt/conda/bin/conda install -y pytorch=1.6.0 torchvision=0.7.0 \
       cudatoolkit=10.2 -c pytorch && \
     /opt/conda/bin/conda install -y lmdb python-lmdb pandas matplotlib \
-      psutil tqdm && \
+      psutil tqdm scipy && \
     /opt/conda/bin/conda clean -ya
 
 ENV PATH /opt/conda/bin:$PATH

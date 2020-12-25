@@ -23,6 +23,7 @@ except ImportError:
 from hfta.ops import get_hfta_op_for
 from hfta.optim import (get_hfta_optim_for, get_hfta_lr_scheduler_for,
                         consolidate_hyperparams_and_determine_B)
+from hfta.workflow import EpochTimer
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -218,8 +219,7 @@ scheduler = get_hfta_lr_scheduler_for(optim.lr_scheduler.StepLR, B=B)(
     gamma=opt.gamma,
 )
 
-if opt.device == 'cuda' and opt.amp:
-  scaler = amp.GradScaler()
+scaler = amp.GradScaler(enabled=(opt.device == 'cuda' and opt.amp))
 
 classifier.to(device)
 
@@ -236,10 +236,10 @@ def loss_fn(output, label, batch_size, trans_feat, num_classes):
 
 
 classifier = classifier.train()
-timing = {'epoch': [], 'epoch_start': [], 'epoch_stop': []}
+epoch_timer = EpochTimer()
 for epoch in range(opt.epochs):
-  timing['epoch'].append(epoch)
-  timing['epoch_start'].append(time.time())
+  num_samples_per_epoch = 0
+  epoch_timer.epoch_start(epoch)
   for i, data in enumerate(dataloader, 0):
     if i > opt.iters_per_epoch:
       break
@@ -256,12 +256,8 @@ for epoch in range(opt.epochs):
       with amp.autocast(enabled=opt.amp):
         pred, trans, trans_feat = classifier(points)
         loss = loss_fn(pred, target, N, trans_feat, num_classes)
-      if opt.amp:
-        scaler.scale(loss).backward()
-        scaler.step(optimizer)
-      else:
-        loss.backward()
-        optimizer.step()
+      scaler.scale(loss).backward()
+      scaler.step(optimizer)
     else:
       pred, trans, trans_feat = classifier(points)
       loss = loss_fn(pred, target, N, trans_feat, num_classes)
@@ -272,18 +268,13 @@ for epoch in range(opt.epochs):
         optimizer.step()
 
     print('[{}: {}/{}] train loss: {}'.format(epoch, i, num_batch, loss.item()))
-
-    if opt.device == 'cuda' and opt.amp:
-      scaler.update()
+    num_samples_per_epoch += N * max(B, 1)
+    scaler.update()
   scheduler.step()
-  timing['epoch_stop'].append(time.time())
-  print('Epoch {} took {} s!'.format(
-      epoch,
-      timing['epoch_stop'][-1] - timing['epoch_start'][-1],
-  ))
-  #torch.save(classifier.state_dict(),
-  #           '%s/seg_model_%s_%d.pth' % (opt.outf, opt.class_choice, epoch))
+  epoch_timer.epoch_stop(num_samples_per_epoch)
+  print('Epoch {} took {} s!'.format(epoch, epoch_timer.epoch_latency(epoch)))
+
 if opt.device == 'xla':
   print(met.metrics_report())
 if opt.outf is not None:
-  pd.DataFrame(timing).to_csv('{}/timing.csv'.format(opt.outf))
+  epoch_timer.to_csv(opt.outf)

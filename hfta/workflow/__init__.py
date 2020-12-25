@@ -1,28 +1,8 @@
 from .runner import (SerialRunner, ConcurrentRunner, HFTARunner, MPSRunner,
                      MAX_ITERS_PER_EPOCH)
-from .utils import attach_args, rearrange_runner_kwargs, extract_logging_level
-
-
-def _init_precs(device, device_model):
-  if device == 'cuda':
-    precs = ['fp32', 'amp']
-  elif device == 'xla':
-    precs = ['bf16']
-  else:
-    precs = ['fp32']
-  return precs
-
-
-def _init_modes(device, device_model):
-  if device == 'cuda':
-    modes = ['serial', 'concurrent', 'mps', 'hfta']
-    if device_model == 'a100':
-      modes += ['mig']
-  elif device == 'xla':
-    modes = ['serial', 'hfta']
-  else:
-    modes = ['serial', 'concurrent', 'hfta']
-  return modes
+from .utils import (attach_args, rearrange_runner_kwargs, extract_logging_level,
+                    _init_precs, _init_modes)
+from .timing import EpochTimer
 
 
 def workflow(

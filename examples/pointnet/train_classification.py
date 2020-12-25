@@ -22,6 +22,7 @@ except ImportError:
 from hfta.ops import get_hfta_op_for
 from hfta.optim import (get_hfta_optim_for, get_hfta_lr_scheduler_for,
                         consolidate_hyperparams_and_determine_B)
+from hfta.workflow import EpochTimer
 
 
 def seeding(seed):
@@ -153,12 +154,12 @@ def main(args):
     return loss
 
   classifier = classifier.train()
-  timing = {'epoch': [], 'epoch_start': [], 'epoch_stop': []}
+  epoch_timer = EpochTimer()
 
   # Training loop
   for epoch in range(args.epochs):
-    timing['epoch'].append(epoch)
-    timing['epoch_start'].append(time.time())
+    num_samples_per_epoch = 0
+    epoch_timer.epoch_start(epoch)
     for i, data in enumerate(dataloader, 0):
       if i > args.iters_per_epoch:
         break
@@ -190,19 +191,16 @@ def main(args):
 
       print('[{}: {}/{}] train loss: {}'.format(epoch, i, num_batch,
                                                 loss.item()))
+      num_samples_per_epoch += N * max(B, 1)
       scaler.update()
     scheduler.step()
-    timing['epoch_stop'].append(time.time())
-    print('Epoch {} took {} s!'.format(
-        epoch,
-        timing['epoch_stop'][-1] - timing['epoch_start'][-1],
-    ))
-    #torch.save(classifier.state_dict(), '%s/cls_model_%d.pth' % (args.outf, epoch))
+    epoch_timer.epoch_stop(num_samples_per_epoch)
+    print('Epoch {} took {} s!'.format(epoch, epoch_timer.epoch_latency(epoch)))
 
   if args.device == 'xla' and not args.eval:
     print(met.metrics_report())
   if args.outf is not None:
-    pd.DataFrame(timing).to_csv(os.path.join(args.outf, 'timing.csv'))
+    epoch_timer.to_csv(args.outf)
 
   if args.eval:
     # Run validation loop.
