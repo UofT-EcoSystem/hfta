@@ -33,13 +33,13 @@ _workflow_pointnet () {
 
 _plot_speedups_pointnet() {
   local task=$1
-  local repeats=$2
   local outdirs=()
-  for ((i=0; i<${repeats}; i++)); do
-    outdirs+=("${OUTDIR_ROOT}/pointnet/run${i}/${task}/")
+  for outdir in ${OUTDIR_ROOT}/pointnet/run*/${task}/
+  do
+    outdirs+=(${outdir})
   done
   timing_parser \
-    --outdirs "${array[@]}" \
+    --outdirs "${outdirs[@]}" \
     --device ${DEVICE}\
     --device-model ${DEVICE_MODEL} \
     --save ${OUTDIR_ROOT}/pointnet/${task}-${DEVICE}-${DEVICE_MODEL} \
@@ -49,11 +49,17 @@ _plot_speedups_pointnet() {
 workflow_pointnet_cls () {
   local repeats=${1:-"3"}
   _workflow_pointnet cls ${repeats}
-  _plot_speedups_pointnet cls ${repeats}
+}
+
+plot_pointnet_cls () {
+  _plot_speedups_pointnet cls
 }
 
 workflow_pointnet_seg () {
   local repeats=${1:-"3"}
   _workflow_pointnet seg ${repeats}
-  _plot_speedups_pointnet seg ${repeats}
+}
+
+plot_pointnet_seg () {
+  _plot_speedups_pointnet seg
 }
