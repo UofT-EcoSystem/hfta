@@ -234,6 +234,21 @@ def _get_hardware_sharing_throughputs(
   return throughputs
 
 
+_LINESTYLES = {
+    'fp32': '--',
+    'amp': '-',
+    'bf16': '--',
+}
+
+_COLORS = {
+    'serial': 'r',
+    'concurrent': 'g',
+    'mps': 'blue',
+    'mig': 'orange',
+    'hfta': 'purple',
+}
+
+
 def _plot_summary(summary, savepath, device):
   assert 'serial' in summary
   if device in {'cpu', 'cuda'}:
@@ -243,47 +258,35 @@ def _plot_summary(summary, savepath, device):
     assert 'bf16' in summary['serial']
     baseline = summary['serial']['bf16']['serial:bf16:avg'].loc[1]
   plt.clf()
-  linestyles = {
-      'fp32': '--',
-      'amp': '-',
-      'bf16': '--',
-  }
-  colors = {
-      'serial': 'r',
-      'concurrent': 'g',
-      'mps': 'blue',
-      'mig': 'orange',
-      'hfta': 'purple',
-  }
   for mode, throughputs in summary.items():
     for prec, df in throughputs.items():
       if mode == 'serial':
         plt.axhline(
             y=df['serial:{}:avg'.format(prec)].loc[1] / baseline,
             label='serial:{}'.format(prec),
-            color=colors[mode],
-            linestyle=linestyles[prec],
+            color=_COLORS[mode],
+            linestyle=_LINESTYLES[prec],
         )
         plt.axhspan(
             df['serial:{}:min'.format(prec)].loc[1] / baseline,
             df['serial:{}:max'.format(prec)].loc[1] / baseline,
-            facecolor=colors[mode],
-            alpha=0.5,
+            facecolor=_COLORS[mode],
+            alpha=0.3,
         )
       else:
         plt.plot(
             df.index.values,
             df['{}:{}:avg'.format(mode, prec)] / baseline,
             label='{}:{}'.format(mode, prec),
-            color=colors[mode],
-            linestyle=linestyles[prec],
+            color=_COLORS[mode],
+            linestyle=_LINESTYLES[prec],
         )
         plt.fill_between(
             df.index.values,
             df['{}:{}:min'.format(mode, prec)] / baseline,
             df['{}:{}:max'.format(mode, prec)] / baseline,
-            facecolor=colors[mode],
-            alpha=0.5,
+            facecolor=_COLORS[mode],
+            alpha=0.3,
         )
   lgd = plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
   plt.xlabel("B")
