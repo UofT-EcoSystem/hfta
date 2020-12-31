@@ -26,7 +26,8 @@ setup(
     packages=find_packages(),
     entry_points={
         'console_scripts': [
-            'timing_parser=hfta.workflow.timing:timing_parser_main'
+            'timing_parser=hfta.workflow.timing:timing_parser_main',
+            'dcgm_parser=hfta.workflow.dcgm_monitor:dcgm_parser_main'
         ],
     },
     python_requires='>=3.6',

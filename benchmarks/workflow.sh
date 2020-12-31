@@ -46,6 +46,20 @@ _plot_speedups_pointnet() {
     --plot
 }
 
+_plot_dcgm_pointnet() {
+  local task=$1
+  local outdirs=()
+  for outdir in ${OUTDIR_ROOT}/pointnet/run*/${task}/
+  do
+    outdirs+=(${outdir})
+  done
+  dcgm_parser \
+    --outdirs "${outdirs[@]}" \
+    --device-model ${DEVICE_MODEL} \
+    --savedir ${OUTDIR_ROOT}/pointnet/dcgm-${task}-${DEVICE}-${DEVICE_MODEL}/ \
+    --plot
+}
+
 workflow_pointnet_cls () {
   local repeats=${1:-"3"}
   _workflow_pointnet cls ${repeats}
@@ -53,6 +67,9 @@ workflow_pointnet_cls () {
 
 plot_pointnet_cls () {
   _plot_speedups_pointnet cls
+  if [ "${DEVICE}" == "cuda" ]; then
+    _plot_dcgm_pointnet cls
+  fi
 }
 
 workflow_pointnet_seg () {
@@ -62,4 +79,7 @@ workflow_pointnet_seg () {
 
 plot_pointnet_seg () {
   _plot_speedups_pointnet seg
+  if [ "${DEVICE}" == "cuda" ]; then
+    _plot_dcgm_pointnet seg
+  fi
 }
