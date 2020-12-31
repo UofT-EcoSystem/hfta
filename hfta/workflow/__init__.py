@@ -1,4 +1,4 @@
-from .runner import (SerialRunner, ConcurrentRunner, HFTARunner, MPSRunner,
+from .runner import (SerialRunner, ConcurrentRunner, HFTARunner, MPSRunner, MIGRunner,
                      MAX_ITERS_PER_EPOCH)
 from .utils import (attach_args, rearrange_runner_kwargs, extract_logging_level,
                     _init_precs, _init_modes)
@@ -15,9 +15,11 @@ def workflow(
     enable_dcgm=True,
     epochs=10,
     iters_per_epoch=MAX_ITERS_PER_EPOCH,
+    serial_runner_kwargs=None,
     concurrent_runner_kwargs=None,
     mps_runner_kwargs=None,
     hfta_runner_kwargs=None,
+    mig_runner_kwargs=None,
 ):
   assert callable(trial_func)
   assert device in {'cuda', 'xla', 'cpu'}
@@ -35,7 +37,7 @@ def workflow(
     assert kwargs is None or isinstance(kwargs, dict)
 
   for kwargs in [
-      concurrent_runner_kwargs, mps_runner_kwargs, hfta_runner_kwargs
+      concurrent_runner_kwargs, mps_runner_kwargs, hfta_runner_kwargs, mig_runner_kwargs
   ]:
     validate_kwargs(kwargs)
 
@@ -47,13 +49,14 @@ def workflow(
 
   runners = []
   if 'serial' in modes:
-    runners.append(SerialRunner())
+    runners.append(SerialRunner(**serial_runner_kwargs))
   if 'concurrent' in modes:
     runners.append(ConcurrentRunner(**concurrent_runner_kwargs))
   if 'mps' in modes:
     runners.append(MPSRunner(**mps_runner_kwargs))
   if 'mig' in modes:
-    raise ValueError('mig currently not supported!')
+    assert device_model == "a100"
+    runners.append(MIGRunner(**mig_runner_kwargs))
   if 'hfta' in modes:
     runners.append(HFTARunner(**hfta_runner_kwargs))
 

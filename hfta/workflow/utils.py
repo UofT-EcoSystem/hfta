@@ -86,7 +86,7 @@ def attach_args(parser=argparse.ArgumentParser()):
       action='store_false',
       help='do not use DCGM',
   )
-  for mode in ['concurrent', 'mps', 'hfta']:
+  for mode in ['concurrent', 'mps', 'hfta', 'mig']:
     parser.add_argument(
         '--{}-dry-run-repeats'.format(mode),
         type=int,
@@ -125,7 +125,8 @@ def attach_args(parser=argparse.ArgumentParser()):
 
 
 def rearrange_runner_kwargs(args):
-  for mode in ['concurrent', 'mps', 'hfta']:
+  setattr(args, '{}_runner_kwargs'.format("serial"), {})
+  for mode in ['concurrent', 'mps', 'hfta', 'mig']:
     runner_kwargs_name = '{}_runner_kwargs'.format(mode)
     setattr(args, runner_kwargs_name, {})
     for kw in [

@@ -60,6 +60,51 @@ _plot_dcgm_pointnet() {
     --plot
 }
 
+
+_plot_dcgm_dcgan() {
+  local outdirs=()
+  for outdir in ${OUTDIR_ROOT}/dcgan/run*/
+  do
+    outdirs+=(${outdir})
+  done
+  dcgm_parser \
+    --outdirs "${outdirs[@]}" \
+    --device-model ${DEVICE_MODEL} \
+    --savedir ${OUTDIR_ROOT}/dcgan/dcgm-${DEVICE}-${DEVICE_MODEL}/ \
+    --plot
+}
+
+_plot_speedups_dcgan() {
+  local outdirs=()
+  for outdir in ${OUTDIR_ROOT}/dcgan/run*/
+  do
+    outdirs+=(${outdir})
+  done
+  timing_parser \
+    --outdirs "${outdirs[@]}" \
+    --device ${DEVICE}\
+    --device-model ${DEVICE_MODEL} \
+    --save ${OUTDIR_ROOT}/dcgan/${DEVICE}-${DEVICE_MODEL} \
+    --plot
+}
+
+workflow_dcgan () {
+  local repeats=${1:-"3"}
+  local epochs=5
+
+  local i
+  for ((i=0; i<${repeats}; i++)); do
+    python3.6 benchmarks/dcgan.py \
+      --outdir_root ${OUTDIR_ROOT}/dcgan/run${i}/ \
+      --epochs ${epochs} \
+      --iters-per-epoch 500 \
+      --dataroot ../datasets/lsun_small/ \
+      --device ${DEVICE} \
+      --device-model ${DEVICE_MODEL}
+  done
+}
+
+
 workflow_pointnet_cls () {
   local repeats=${1:-"3"}
   _workflow_pointnet cls ${repeats}

@@ -1,6 +1,6 @@
 import logging
 import os
-import threading
+import subprocess
 import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -13,6 +13,11 @@ MAX_ITERS_PER_EPOCH = 1000000000
 
 
 class Runner:
+  B_LIMIT = 1000000000
+
+  def __init__(self, cmds_before_run_task=[], cmds_after_run_task=[]):
+    self.cmds_before_run_task = cmds_before_run_task
+    self.cmds_after_run_task = cmds_after_run_task
 
   def logging_format(self, msg):
     return '{}: {}'.format(self.mode, msg)
@@ -36,7 +41,7 @@ class Runner:
   def mode(self):
     raise NotImplementedError('Runner is an abstract/interface class!')
 
-  def _plan_Bs(self, trial_func=None, device='cuda', prec='fp32'):
+  def _plan_Bs(self, trial_func=None, device='cuda', prec='fp32', B_limit=B_LIMIT):
     raise NotImplementedError('Runner is an abstract/interface class!')
 
   def _run_B(
@@ -114,6 +119,8 @@ class Runner:
     self.info('Sweeping precs: {} ...'.format(precs))
     for prec in precs:
       self.info('Measuring prec: {} ...'.format(prec))
+      for cmd in self.cmds_before_run_task:
+        run_command(cmd)
       succeeded = self._sweep_Bs(
           self._plan_Bs(trial_func=trial_func, device=device, prec=prec),
           trial_func=trial_func,
@@ -130,6 +137,8 @@ class Runner:
           epochs=epochs,
           iters_per_epoch=iters_per_epoch,
       )
+      for cmd in self.cmds_after_run_task:
+        run_command(cmd)
       if not succeeded:
         self.error('prec = {} failed!'.format(prec))
         return succeeded
@@ -146,7 +155,13 @@ class HardwareSharingRunner(Runner):
       lambd=None,
       dry_run_epochs=None,
       dry_run_iters_per_epoch=None,
+      cmds_before_run_task=[],
+      cmds_after_run_task=[],
   ):
+    super(HardwareSharingRunner, self).__init__(
+      cmds_before_run_task=cmds_before_run_task,
+      cmds_after_run_task=cmds_after_run_task,
+    )
     self._dry_run_repeats = dry_run_repeats
     self._max_num_Bs = max_num_Bs
     self._lambd = lambd
@@ -164,7 +179,7 @@ class HardwareSharingRunner(Runner):
   def _outdir_mode_B(self, outdir_prefix, B):
     return os.path.join(outdir_prefix, self.mode, 'B{}'.format(B))
 
-  def _plan_Bs(self, trial_func=None, device='cuda', prec='fp32'):
+  def _plan_Bs(self, trial_func=None, device='cuda', prec='fp32', B_limit=1000000000):
 
     def try_B(B):
       self.info('Trying B: {} ...'.format(B))
@@ -184,9 +199,10 @@ class HardwareSharingRunner(Runner):
       return succeeded
 
     self.info('Searching for max B ...')
-    max_B = find_max_B(try_B, dry_run_repeats=self._dry_run_repeats)
+    B_limit = min(B_limit, self.B_LIMIT)
+    max_B = find_max_B(try_B, dry_run_repeats=self._dry_run_repeats, B_limit=B_limit)
     self.info('Found max B: {} !'.format(max_B))
-    Bs = expovariate_plan(max_B, self._max_num_Bs, lambd=self._lambd)
+    Bs = expovariate_plan(max_B, min(max_B, self._max_num_Bs), lambd=self._lambd)
     self.info('Planned Bs to measure: {} !'.format(Bs))
     return Bs
 
@@ -198,6 +214,7 @@ def mk_outdir_and_run_trial(
     prec='fp32',
     epochs=10,
     iters_per_epoch=MAX_ITERS_PER_EPOCH,
+    env_map=dict(),
     outdir=None,
 ):
   if outdir is not None:
@@ -209,10 +226,21 @@ def mk_outdir_and_run_trial(
       epochs=epochs,
       iters_per_epoch=iters_per_epoch,
       outdir=outdir,
+      env_map=env_map,
   )
 
 
 class SerialRunner(Runner):
+
+  def __init__(
+      self,
+      cmds_before_run_task=[],
+      cmds_after_run_task=[],
+  ):
+    super(SerialRunner, self).__init__(
+      cmds_before_run_task=cmds_before_run_task,
+      cmds_after_run_task=cmds_after_run_task,
+    )
 
   @property
   def mode(self):
@@ -258,6 +286,8 @@ class ConcurrentRunner(HardwareSharingRunner):
       lambd=4.0,
       dry_run_epochs=2,
       dry_run_iters_per_epoch=10,
+    cmds_before_run_task=[],
+    cmds_after_run_task=[],
   ):
     super(ConcurrentRunner, self).__init__(
         dry_run_repeats=dry_run_repeats,
@@ -265,6 +295,8 @@ class ConcurrentRunner(HardwareSharingRunner):
         lambd=lambd,
         dry_run_epochs=dry_run_epochs,
         dry_run_iters_per_epoch=dry_run_iters_per_epoch,
+      cmds_before_run_task=cmds_before_run_task,
+      cmds_after_run_task=cmds_after_run_task,
     )
 
   @property
@@ -347,6 +379,116 @@ class MPSRunner(ConcurrentRunner):
     return succeeded
 
 
+class MIGRunner(ConcurrentRunner):
+  MIG_PROFILE_CONFIGS = ('0','9,9','14,14,14','14,14,14,19','14,14,19,19,19','14,19,19,19,19,19','19,19,19,19,19,19,19')
+  sudo = '' if os.geteuid() == 0 else 'sudo'
+  B_LIMIT = 7
+
+  def __init__(
+    self,
+    dry_run_repeats=1,
+    max_num_Bs=5,
+    lambd=4.0,
+    dry_run_epochs=2,
+    dry_run_iters_per_epoch=10,
+    cmds_before_run_task=[],
+    cmds_after_run_task=[],
+
+  ):
+    super(ConcurrentRunner, self).__init__(
+      dry_run_repeats=dry_run_repeats,
+      max_num_Bs=max_num_Bs,
+      lambd=lambd,
+      dry_run_epochs=dry_run_epochs,
+      dry_run_iters_per_epoch=dry_run_iters_per_epoch,
+      cmds_before_run_task=cmds_before_run_task,
+      cmds_after_run_task=cmds_after_run_task,
+    )
+
+  @property
+  def mode(self):
+    return 'mig'
+
+  def create_mig_instances(self, B):
+    self.distroy_mig_instances()
+    B_idx = B - 1
+    mig_dev_ids = []
+    try:
+      prefix = "{} nvidia-smi ".format(self.sudo)
+      run_command("{} mig -cgi {}".format(prefix, self.MIG_PROFILE_CONFIGS[B_idx]))
+      run_command("{} mig -cci".format(prefix))
+      cmd = "{} -L".format(prefix)
+      cmd_out = run_command(cmd)
+      cmd_outs = cmd_out.split("\n")
+      for item in cmd_outs:
+        if ("MIG" in item):
+          mig_dev_ids.append(item.split("UUID: ")[-1][:-1])
+    except subprocess.CalledProcessError as e:
+      if e.returncode != 6:
+        logging.error(e)
+    # print(mig_dev_ids)
+    return mig_dev_ids
+
+  def distroy_mig_instances(self):
+    try:
+      run_command("{} nvidia-smi mig -dci -i 0".format(self.sudo))
+      run_command("{} nvidia-smi mig -dgi -i 0".format(self.sudo))
+    except subprocess.CalledProcessError as e:
+      if e.returncode != 6:
+        logging.error(e)
+        return e.returncode
+    return 0
+
+
+  def _run_B(
+      self,
+      B,
+      trial_func=None,
+      device='cuda',
+      prec='fp32',
+      epochs=10,
+      iters_per_epoch=MAX_ITERS_PER_EPOCH,
+      outdir_prefix=None,
+  ):
+
+    assert device == 'cuda'
+    mig_instances = self.create_mig_instances(B)
+    if len(mig_instances) == 0:
+      logging.error(""" CAN NOT FIND ANY MIG DEVICE!
+            Please enable MIG on A100 with follow command:
+              <sudo nvidia-smi -mig 1> 
+            And then reboot the system.
+            NOTE: After enable MIG, only MIGRunner can be used.
+      """)
+      exit(1)
+    assert len(mig_instances) == B
+
+    with ThreadPoolExecutor(max_workers=B) as executor:
+      if outdir_prefix is None:
+        outdirs = [None for _ in range(B)]
+      else:
+        outdirs = [
+          os.path.join(outdir_prefix, 'idx{}'.format(b)) for b in range(B)
+        ]
+      ts = [
+        executor.submit(
+          mk_outdir_and_run_trial,
+          trial_func=trial_func,
+          B=0,
+          device=device,
+          prec=prec,
+          epochs=epochs,
+          iters_per_epoch=iters_per_epoch,
+          outdir=outdirs[b],
+          env_map={"CUDA_VISIBLE_DEVICES": mig_instances[b]}
+        ) for b in range(B)
+      ]
+      results = all([t.result() for t in ts])
+      time.sleep(5)
+      self.distroy_mig_instances()
+      return results
+
+
 class HFTARunner(HardwareSharingRunner):
 
   def __init__(
@@ -356,6 +498,8 @@ class HFTARunner(HardwareSharingRunner):
       lambd=4.0,
       dry_run_epochs=2,
       dry_run_iters_per_epoch=3,
+    cmds_before_run_task=[],
+    cmds_after_run_task=[],
   ):
     super(HFTARunner, self).__init__(
         dry_run_repeats=dry_run_repeats,
@@ -363,6 +507,8 @@ class HFTARunner(HardwareSharingRunner):
         lambd=lambd,
         dry_run_epochs=dry_run_epochs,
         dry_run_iters_per_epoch=dry_run_iters_per_epoch,
+        cmds_before_run_task=cmds_before_run_task,
+        cmds_after_run_task=cmds_after_run_task,
     )
 
   @property
