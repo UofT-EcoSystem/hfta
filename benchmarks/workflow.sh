@@ -60,8 +60,7 @@ _plot_dcgm_pointnet() {
     --plot
 }
 
-
-_plot_dcgm_dcgan() {
+plot_dcgm_dcgan() {
   local outdirs=()
   for outdir in ${OUTDIR_ROOT}/dcgan/run*/
   do
@@ -74,7 +73,7 @@ _plot_dcgm_dcgan() {
     --plot
 }
 
-_plot_speedups_dcgan() {
+plot_speedups_dcgan() {
   local outdirs=()
   for outdir in ${OUTDIR_ROOT}/dcgan/run*/
   do

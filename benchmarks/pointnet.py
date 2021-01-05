@@ -17,6 +17,7 @@ def main(args):
       epochs=None,
       iters_per_epoch=None,
       outdir=None,
+      env_map=None,
   ):
     cmd = [
         'python',
@@ -73,6 +74,7 @@ def main(args):
               os.path.abspath(os.path.expanduser(os.path.dirname(__file__))),
               '../examples/pointnet/',
           ),
+          env=env_map,
       )
     except subprocess.CalledProcessError as e:
       logging.error(e)
@@ -92,6 +94,7 @@ def main(args):
       concurrent_runner_kwargs=args.concurrent_runner_kwargs,
       mps_runner_kwargs=args.mps_runner_kwargs,
       hfta_runner_kwargs=args.hfta_runner_kwargs,
+      mig_runner_kwargs=args.mig_runner_kwargs,
   ):
     logging.info('Done!')
   else:

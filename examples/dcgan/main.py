@@ -23,61 +23,60 @@ from hfta.ops import get_hfta_op_for
 from hfta.optim import get_hfta_optim_for, consolidate_hyperparams_and_determine_B
 from hfta.workflow import EpochTimer
 
+
 def attach_config_args(parser=argparse.ArgumentParser()):
-  parser.add_argument('--ngpu', type=int, default=1, help='number of GPUs to use')
   parser.add_argument(
-    '--netG',
-    default='',
-    help="path to netG (to continue training)",
+      '--ngpu',
+      type=int,
+      default=1,
+      help='number of GPUs to use')
+  parser.add_argument(
+      '--netG',
+      default='',
+      help="path to netG (to continue training)",
   )
   parser.add_argument(
-    '--netD',
-    default='',
-    help="path to netD (to continue training)",
+      '--netD',
+      default='',
+      help="path to netD (to continue training)",
   )
   parser.add_argument(
       '--workers',
       type=int,
       help='number of data loading workers',
-      default=4,
+      default=2,
   )
   parser.add_argument(
       '--epochs',
       type=int,
-      default=250,
+      default=25,
       help='number of epochs to train for',
   )
   parser.add_argument(
       '--iters-per-epoch',
       type=int,
       default=float('inf'),
-      help='number of epochs to train for',
+      help='number of iterations per epoch to train for',
   )
   parser.add_argument(
-    '--classes',
-    default='bedroom',
-    help='comma separated list of classes for the lsun data set',
+      '--classes',
+      default='bedroom',
+      help='comma separated list of classes for the lsun data set',
   )
   parser.add_argument('--outf', type=str, default=None, help='output folder')
-  parser.add_argument('--model', type=str, default='', help='model path')
   parser.add_argument('--dataset', type=str, required=True, help="dataset path")
   parser.add_argument(
       '--dataset_type',
       required=True,
       help='cifar10 | lsun | mnist |imagenet | folder | lfw | fake',
   )
-  parser.add_argument(
-      '--num_points',
-      type=int,
-      default=2500,
-      help='num of points for dataset',
-  )
+
   parser.add_argument(
       '--device',
       type=str,
       default='cuda',
       choices=['cpu', 'cuda', 'xla'],
-      help="the device where this test is running",
+      help='the device where this test is running',
   )
   parser.add_argument(
       '--hfta',
@@ -97,12 +96,7 @@ def attach_config_args(parser=argparse.ArgumentParser()):
       action='store_true',
       help='run the evaluation loop',
   )
-  parser.add_argument(
-      '--seed',
-      type=int,
-      help='Seed',
-      default=1117,
-  )
+  parser.add_argument('--seed', type=int, help='Seed')
   parser.add_argument(
       '--warmup-data-loading',
       default=False,
@@ -111,9 +105,9 @@ def attach_config_args(parser=argparse.ArgumentParser()):
       'forward and backward passes',
   )
   parser.add_argument(
-    '--dry-run',
-    action='store_true',
-    help='check a single training cycle works',
+      '--dry-run',
+      action='store_true',
+      help='check a single training cycle works',
   )
   return parser
 
@@ -123,39 +117,39 @@ def attach_fusible_args(parser=argparse.ArgumentParser()):
   parser.add_argument(
       '--lr',
       type=float,
-      default=[0.001],
+      default=[0.0002],
       nargs='*',
-      help='learning rate, default=0.001',
+      help='learning rate, default=0.0002',
   )
   parser.add_argument(
       '--beta1',
       type=float,
-      default=[0.9],
+      default=[0.5],
       nargs='*',
-      help='beta1 coefficient (default: 0.9)',
+      help='beta1 for adam. default=0.5',
   )
-  
+
   return parser
 
 
 def attach_nonfusible_args(parser=argparse.ArgumentParser()):
   parser.add_argument(
-    '--batchSize',
-    type=int,
-    default=128,
-    help='input batch size',
+      '--batchSize',
+      type=int,
+      default=128,
+      help='input batch size',
   )
   parser.add_argument(
-    '--imageSize',
-    type=int,
-    default=64,
-    help='the height / width of the input image to network',
+      '--imageSize',
+      type=int,
+      default=64,
+      help='the height / width of the input image to network',
   )
   parser.add_argument(
-    '--nz',
-    type=int,
-    default=100,
-    help='size of the latent z vector',
+      '--nz',
+      type=int,
+      default=100,
+      help='size of the latent z vector',
   )
   parser.add_argument('--ngf', type=int, default=64)
   parser.add_argument('--ndf', type=int, default=64)
@@ -168,6 +162,7 @@ def attach_args(parser=argparse.ArgumentParser()):
   attach_nonfusible_args(parser)
   return parser
 
+
 args = attach_args().parse_args()
 print(args)
 
@@ -177,6 +172,8 @@ try:
 except OSError:
   pass
 
+if args.seed is None:
+  args.seed = random.randint(1, 10000)
 print("Random Seed: ", args.seed)
 random.seed(args.seed)
 torch.manual_seed(args.seed)
@@ -514,18 +511,17 @@ for epoch in range(args.epochs):
 
     num_samples_per_epoch += batch_size * max(B, 1)
 
-
     print('[%d/%d][%d/%d] Loss_D: %.4f Loss_G: %.4f D(x): %.4f D(G(z)): '
           '%.4f / %.4f' % (
-      epoch,
-      args.epochs,
-      i,
-      len(dataloader),
-      errD.item(),
-      errG.item(),
-      D_x,
-      D_G_z1,
-      D_G_z2,
+              epoch,
+              args.epochs,
+              i,
+              len(dataloader),
+              errD.item(),
+              errG.item(),
+              D_x,
+              D_G_z1,
+              D_G_z2,
           ))
     if args.dry_run:
       break

@@ -1,8 +1,9 @@
-from .runner import (SerialRunner, ConcurrentRunner, HFTARunner, MPSRunner, MIGRunner,
-                     MAX_ITERS_PER_EPOCH)
+from .runner import (SerialRunner, ConcurrentRunner, HFTARunner, MPSRunner,
+                     MIGRunner, MAX_ITERS_PER_EPOCH)
 from .utils import (attach_args, rearrange_runner_kwargs, extract_logging_level,
                     _init_precs, _init_modes)
 from .timing import EpochTimer
+import logging
 
 
 def workflow(
@@ -37,7 +38,8 @@ def workflow(
     assert kwargs is None or isinstance(kwargs, dict)
 
   for kwargs in [
-      concurrent_runner_kwargs, mps_runner_kwargs, hfta_runner_kwargs, mig_runner_kwargs
+      concurrent_runner_kwargs, mps_runner_kwargs, hfta_runner_kwargs,
+      mig_runner_kwargs
   ]:
     validate_kwargs(kwargs)
 
@@ -56,6 +58,7 @@ def workflow(
     runners.append(MPSRunner(**mps_runner_kwargs))
   if 'mig' in modes:
     assert device_model == "a100"
+    assert len(modes) == 1
     runners.append(MIGRunner(**mig_runner_kwargs))
   if 'hfta' in modes:
     runners.append(HFTARunner(**hfta_runner_kwargs))
@@ -73,7 +76,12 @@ def workflow(
 
   for runner in runners:
     runner.info('Starting with run_kwargs = {}'.format(run_kwargs))
-    succeeded = runner.run(**run_kwargs)
+    try:
+      succeeded = runner.run(**run_kwargs)
+    except Exception as e:
+      logging.error(e)
+      continue
+
     if not succeeded:
       runner.error('Failed!')
       return succeeded

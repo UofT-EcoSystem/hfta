@@ -13,11 +13,12 @@ MAX_ITERS_PER_EPOCH = 1000000000
 
 
 class Runner:
-  B_LIMIT = 1000000000
+  B_LIMIT = None
 
   def __init__(self, cmds_before_run_task=[], cmds_after_run_task=[]):
     self.cmds_before_run_task = cmds_before_run_task
     self.cmds_after_run_task = cmds_after_run_task
+    self.default_env_map = {}
 
   def logging_format(self, msg):
     return '{}: {}'.format(self.mode, msg)
@@ -41,7 +42,7 @@ class Runner:
   def mode(self):
     raise NotImplementedError('Runner is an abstract/interface class!')
 
-  def _plan_Bs(self, trial_func=None, device='cuda', prec='fp32', B_limit=B_LIMIT):
+  def _plan_Bs(self, trial_func=None, device='cuda', prec='fp32'):
     raise NotImplementedError('Runner is an abstract/interface class!')
 
   def _run_B(
@@ -80,9 +81,6 @@ class Runner:
         monitor = DcgmMonitor(device_model)
         monitor_thread = dcgm_monitor_start(monitor, outdir)
 
-      if device == 'cuda' and device_model == 'a100' and prec == 'fp32':
-        os.environ['NVIDIA_TF32_OVERRIDE'] = '0'
-
       try:
         succeeded = self._run_B(
             B,
@@ -94,9 +92,6 @@ class Runner:
             outdir_prefix=outdir,
         )
       finally:
-        if device == 'cuda' and device_model == 'a100' and prec == 'fp32':
-          del os.environ['NVIDIA_TF32_OVERRIDE']
-
         if enable_dcgm and device == 'cuda':
           dcgm_monitor_stop(monitor, monitor_thread)
       if not succeeded:
@@ -119,8 +114,12 @@ class Runner:
     self.info('Sweeping precs: {} ...'.format(precs))
     for prec in precs:
       self.info('Measuring prec: {} ...'.format(prec))
+      if device == 'cuda' and device_model == 'a100':
+        self.default_env_map[
+            'NVIDIA_TF32_OVERRIDE'] = '1' if prec == 'amp' else '0'
       for cmd in self.cmds_before_run_task:
         run_command(cmd)
+
       succeeded = self._sweep_Bs(
           self._plan_Bs(trial_func=trial_func, device=device, prec=prec),
           trial_func=trial_func,
@@ -137,8 +136,12 @@ class Runner:
           epochs=epochs,
           iters_per_epoch=iters_per_epoch,
       )
+
       for cmd in self.cmds_after_run_task:
         run_command(cmd)
+      if device == 'cuda' and device_model == 'a100':
+        del self.default_env_map['NVIDIA_TF32_OVERRIDE']
+
       if not succeeded:
         self.error('prec = {} failed!'.format(prec))
         return succeeded
@@ -159,8 +162,8 @@ class HardwareSharingRunner(Runner):
       cmds_after_run_task=[],
   ):
     super(HardwareSharingRunner, self).__init__(
-      cmds_before_run_task=cmds_before_run_task,
-      cmds_after_run_task=cmds_after_run_task,
+        cmds_before_run_task=cmds_before_run_task,
+        cmds_after_run_task=cmds_after_run_task,
     )
     self._dry_run_repeats = dry_run_repeats
     self._max_num_Bs = max_num_Bs
@@ -179,7 +182,7 @@ class HardwareSharingRunner(Runner):
   def _outdir_mode_B(self, outdir_prefix, B):
     return os.path.join(outdir_prefix, self.mode, 'B{}'.format(B))
 
-  def _plan_Bs(self, trial_func=None, device='cuda', prec='fp32', B_limit=1000000000):
+  def _plan_Bs(self, trial_func=None, device='cuda', prec='fp32'):
 
     def try_B(B):
       self.info('Trying B: {} ...'.format(B))
@@ -199,10 +202,11 @@ class HardwareSharingRunner(Runner):
       return succeeded
 
     self.info('Searching for max B ...')
-    B_limit = min(B_limit, self.B_LIMIT)
-    max_B = find_max_B(try_B, dry_run_repeats=self._dry_run_repeats, B_limit=B_limit)
+    max_B = find_max_B(try_B,
+                       dry_run_repeats=self._dry_run_repeats,
+                       B_limit=self.B_LIMIT)
     self.info('Found max B: {} !'.format(max_B))
-    Bs = expovariate_plan(max_B, min(max_B, self._max_num_Bs), lambd=self._lambd)
+    Bs = expovariate_plan(max_B, self._max_num_Bs, lambd=self._lambd)
     self.info('Planned Bs to measure: {} !'.format(Bs))
     return Bs
 
@@ -214,7 +218,7 @@ def mk_outdir_and_run_trial(
     prec='fp32',
     epochs=10,
     iters_per_epoch=MAX_ITERS_PER_EPOCH,
-    env_map=dict(),
+    env_map=None,
     outdir=None,
 ):
   if outdir is not None:
@@ -238,8 +242,8 @@ class SerialRunner(Runner):
       cmds_after_run_task=[],
   ):
     super(SerialRunner, self).__init__(
-      cmds_before_run_task=cmds_before_run_task,
-      cmds_after_run_task=cmds_after_run_task,
+        cmds_before_run_task=cmds_before_run_task,
+        cmds_after_run_task=cmds_after_run_task,
     )
 
   @property
@@ -273,6 +277,10 @@ class SerialRunner(Runner):
           epochs=epochs,
           iters_per_epoch=iters_per_epoch,
           outdir=outdir_prefix,
+          env_map={
+              **self.default_env_map,
+              **os.environ
+          },
       )
       return t.result()
 
@@ -286,8 +294,8 @@ class ConcurrentRunner(HardwareSharingRunner):
       lambd=4.0,
       dry_run_epochs=2,
       dry_run_iters_per_epoch=10,
-    cmds_before_run_task=[],
-    cmds_after_run_task=[],
+      cmds_before_run_task=[],
+      cmds_after_run_task=[],
   ):
     super(ConcurrentRunner, self).__init__(
         dry_run_repeats=dry_run_repeats,
@@ -295,8 +303,8 @@ class ConcurrentRunner(HardwareSharingRunner):
         lambd=lambd,
         dry_run_epochs=dry_run_epochs,
         dry_run_iters_per_epoch=dry_run_iters_per_epoch,
-      cmds_before_run_task=cmds_before_run_task,
-      cmds_after_run_task=cmds_after_run_task,
+        cmds_before_run_task=cmds_before_run_task,
+        cmds_after_run_task=cmds_after_run_task,
     )
 
   @property
@@ -331,6 +339,10 @@ class ConcurrentRunner(HardwareSharingRunner):
               epochs=epochs,
               iters_per_epoch=iters_per_epoch,
               outdir=outdirs[b],
+              env_map={
+                  **self.default_env_map,
+                  **os.environ
+              },
           ) for b in range(B)
       ]
       return all([t.result() for t in ts])
@@ -380,42 +392,44 @@ class MPSRunner(ConcurrentRunner):
 
 
 class MIGRunner(ConcurrentRunner):
-  MIG_PROFILE_CONFIGS = ('0','9,9','14,14,14','14,14,14,19','14,14,19,19,19','14,19,19,19,19,19','19,19,19,19,19,19,19')
-  sudo = '' if os.geteuid() == 0 else 'sudo'
+  MIG_PROFILE_CONFIGS = ('0', '9,9', '14,14,14', '14,14,14,19',
+                         '14,14,19,19,19', '14,19,19,19,19,19',
+                         '19,19,19,19,19,19,19')
+  SUDO = '' if os.geteuid() == 0 else 'sudo'
   B_LIMIT = 7
 
   def __init__(
-    self,
-    dry_run_repeats=1,
-    max_num_Bs=5,
-    lambd=4.0,
-    dry_run_epochs=2,
-    dry_run_iters_per_epoch=10,
-    cmds_before_run_task=[],
-    cmds_after_run_task=[],
-
+      self,
+      dry_run_repeats=1,
+      max_num_Bs=5,
+      lambd=4.0,
+      dry_run_epochs=2,
+      dry_run_iters_per_epoch=10,
+      cmds_before_run_task=[],
+      cmds_after_run_task=[],
   ):
     super(ConcurrentRunner, self).__init__(
-      dry_run_repeats=dry_run_repeats,
-      max_num_Bs=max_num_Bs,
-      lambd=lambd,
-      dry_run_epochs=dry_run_epochs,
-      dry_run_iters_per_epoch=dry_run_iters_per_epoch,
-      cmds_before_run_task=cmds_before_run_task,
-      cmds_after_run_task=cmds_after_run_task,
+        dry_run_repeats=dry_run_repeats,
+        max_num_Bs=max_num_Bs,
+        lambd=lambd,
+        dry_run_epochs=dry_run_epochs,
+        dry_run_iters_per_epoch=dry_run_iters_per_epoch,
+        cmds_before_run_task=cmds_before_run_task,
+        cmds_after_run_task=cmds_after_run_task,
     )
 
   @property
   def mode(self):
     return 'mig'
 
-  def create_mig_instances(self, B):
-    self.distroy_mig_instances()
+  def _create_mig_instances(self, B):
+    self._distroy_mig_instances()
     B_idx = B - 1
     mig_dev_ids = []
     try:
-      prefix = "{} nvidia-smi ".format(self.sudo)
-      run_command("{} mig -cgi {}".format(prefix, self.MIG_PROFILE_CONFIGS[B_idx]))
+      prefix = "{} nvidia-smi ".format(self.SUDO)
+      run_command("{} mig -cgi {}".format(prefix,
+                                          self.MIG_PROFILE_CONFIGS[B_idx]))
       run_command("{} mig -cci".format(prefix))
       cmd = "{} -L".format(prefix)
       cmd_out = run_command(cmd)
@@ -424,21 +438,20 @@ class MIGRunner(ConcurrentRunner):
         if ("MIG" in item):
           mig_dev_ids.append(item.split("UUID: ")[-1][:-1])
     except subprocess.CalledProcessError as e:
-      if e.returncode != 6:
-        logging.error(e)
-    # print(mig_dev_ids)
+      logging.error(e)
+      return []
+
     return mig_dev_ids
 
-  def distroy_mig_instances(self):
+  def _distroy_mig_instances(self):
     try:
-      run_command("{} nvidia-smi mig -dci -i 0".format(self.sudo))
-      run_command("{} nvidia-smi mig -dgi -i 0".format(self.sudo))
+      run_command("{} nvidia-smi mig -dci -i 0".format(self.SUDO))
+      run_command("{} nvidia-smi mig -dgi -i 0".format(self.SUDO))
     except subprocess.CalledProcessError as e:
       if e.returncode != 6:
         logging.error(e)
         return e.returncode
     return 0
-
 
   def _run_B(
       self,
@@ -452,7 +465,8 @@ class MIGRunner(ConcurrentRunner):
   ):
 
     assert device == 'cuda'
-    mig_instances = self.create_mig_instances(B)
+    mig_instances = self._create_mig_instances(B)
+
     if len(mig_instances) == 0:
       logging.error(""" CAN NOT FIND ANY MIG DEVICE!
             Please enable MIG on A100 with follow command:
@@ -460,7 +474,8 @@ class MIGRunner(ConcurrentRunner):
             And then reboot the system.
             NOTE: After enable MIG, only MIGRunner can be used.
       """)
-      exit(1)
+      raise RuntimeError()
+
     assert len(mig_instances) == B
 
     with ThreadPoolExecutor(max_workers=B) as executor:
@@ -468,24 +483,25 @@ class MIGRunner(ConcurrentRunner):
         outdirs = [None for _ in range(B)]
       else:
         outdirs = [
-          os.path.join(outdir_prefix, 'idx{}'.format(b)) for b in range(B)
+            os.path.join(outdir_prefix, 'idx{}'.format(b)) for b in range(B)
         ]
       ts = [
-        executor.submit(
-          mk_outdir_and_run_trial,
-          trial_func=trial_func,
-          B=0,
-          device=device,
-          prec=prec,
-          epochs=epochs,
-          iters_per_epoch=iters_per_epoch,
-          outdir=outdirs[b],
-          env_map={"CUDA_VISIBLE_DEVICES": mig_instances[b]}
-        ) for b in range(B)
+          executor.submit(mk_outdir_and_run_trial,
+                          trial_func=trial_func,
+                          B=0,
+                          device=device,
+                          prec=prec,
+                          epochs=epochs,
+                          iters_per_epoch=iters_per_epoch,
+                          outdir=outdirs[b],
+                          env_map={
+                              "CUDA_VISIBLE_DEVICES": mig_instances[b],
+                              **self.default_env_map,
+                              **os.environ
+                          }) for b in range(B)
       ]
       results = all([t.result() for t in ts])
-      time.sleep(5)
-      self.distroy_mig_instances()
+      time.sleep(1)
       return results
 
 
@@ -498,8 +514,8 @@ class HFTARunner(HardwareSharingRunner):
       lambd=4.0,
       dry_run_epochs=2,
       dry_run_iters_per_epoch=3,
-    cmds_before_run_task=[],
-    cmds_after_run_task=[],
+      cmds_before_run_task=[],
+      cmds_after_run_task=[],
   ):
     super(HFTARunner, self).__init__(
         dry_run_repeats=dry_run_repeats,
@@ -535,5 +551,9 @@ class HFTARunner(HardwareSharingRunner):
           epochs=epochs,
           iters_per_epoch=iters_per_epoch,
           outdir=outdir_prefix,
+          env_map={
+              **self.default_env_map,
+              **os.environ
+          },
       )
       return t.result()

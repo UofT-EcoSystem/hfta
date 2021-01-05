@@ -17,7 +17,7 @@ def main(args):
       epochs=None,
       iters_per_epoch=None,
       outdir=None,
-      env_map={},
+      env_map=None,
   ):
     cmd = [
         'python',
@@ -82,7 +82,8 @@ def main(args):
   cmds_before_run_task = ["md5sum {}".format(train_data_path)]
   for mode in ['serial', 'concurrent', 'mps', 'hfta', 'mig']:
     runner_kwargs_name = '{}_runner_kwargs'.format(mode)
-    getattr(args, runner_kwargs_name)["cmds_before_run_task"] = cmds_before_run_task
+    getattr(args,
+            runner_kwargs_name)["cmds_before_run_task"] = cmds_before_run_task
 
   if workflow(
       trial_func=trial,

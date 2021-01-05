@@ -1,7 +1,7 @@
 import random
 
 
-def find_max_B(try_B, dry_run_repeats=5, B_limit=1000000000):
+def find_max_B(try_B, dry_run_repeats=5, B_limit=None):
 
   def fit(B):
     for _ in range(dry_run_repeats):
@@ -11,11 +11,11 @@ def find_max_B(try_B, dry_run_repeats=5, B_limit=1000000000):
 
   prev_B = None
   curr_B = 1
-  while fit(curr_B):
+  while fit(curr_B) and prev_B < curr_B:
     prev_B = curr_B
-    curr_B = min(curr_B * 2, B_limit)
-    if (prev_B == curr_B):
-      break
+    curr_B = curr_B * 2
+    if B_limit == None:
+      curr_B = min(curr_B, B_limit)
   if curr_B == 1:
     raise RuntimeError("Cannot fit a single model!")
   # Now that we know max_B is within [prev_B, curr_B], use binary search to find
