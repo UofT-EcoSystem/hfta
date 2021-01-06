@@ -115,8 +115,7 @@ class Runner:
     for prec in precs:
       self.info('Measuring prec: {} ...'.format(prec))
       if device == 'cuda' and device_model == 'a100':
-        self.default_env_map[
-            'NVIDIA_TF32_OVERRIDE'] = '1' if prec == 'amp' else '0'
+        self.default_env_map['NVIDIA_TF32_OVERRIDE'] = '1' if prec == 'amp' else '0'
       for cmd in self.cmds_before_run_task:
         run_command(cmd)
 
