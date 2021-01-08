@@ -16,7 +16,6 @@ def workflow(
     enable_dcgm=True,
     epochs=10,
     iters_per_epoch=MAX_ITERS_PER_EPOCH,
-    serial_runner_kwargs=None,
     concurrent_runner_kwargs=None,
     mps_runner_kwargs=None,
     hfta_runner_kwargs=None,
@@ -51,7 +50,7 @@ def workflow(
 
   runners = []
   if 'serial' in modes:
-    runners.append(SerialRunner(**serial_runner_kwargs))
+    runners.append(SerialRunner())
   if 'concurrent' in modes:
     runners.append(ConcurrentRunner(**concurrent_runner_kwargs))
   if 'mps' in modes:
@@ -76,12 +75,7 @@ def workflow(
 
   for runner in runners:
     runner.info('Starting with run_kwargs = {}'.format(run_kwargs))
-    try:
-      succeeded = runner.run(**run_kwargs)
-    except Exception as e:
-      logging.error(e)
-      continue
-
+    succeeded = runner.run(**run_kwargs)
     if not succeeded:
       runner.error('Failed!')
       return succeeded

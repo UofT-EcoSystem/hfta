@@ -40,8 +40,8 @@ def main(args):
 
     num_hps = max(B, 1)
     hyperparam_strs = {
-        'lr': [str(random.uniform(0.0001, 0.003)) for _ in range(num_hps)],
-        'beta1': [str(random.uniform(0.8, 0.99)) for _ in range(num_hps)],
+        'lr': [str(random.uniform(0.0001, 0.001)) for _ in range(num_hps)],
+        'beta1': [str(random.uniform(0.3, 0.99)) for _ in range(num_hps)],
     }
 
     for flag, vals in hyperparam_strs.items():
@@ -77,14 +77,6 @@ def main(args):
       succeeded = False
     return succeeded
 
-  # Warmup datas before each task
-  train_data_path = os.path.join(args.dataroot, "bedroom_train_lmdb/data.mdb")
-  cmds_before_run_task = ["md5sum {}".format(train_data_path)]
-  for mode in ['serial', 'concurrent', 'mps', 'hfta', 'mig']:
-    runner_kwargs_name = '{}_runner_kwargs'.format(mode)
-    getattr(args,
-            runner_kwargs_name)["cmds_before_run_task"] = cmds_before_run_task
-
   if workflow(
       trial_func=trial,
       device=args.device,
@@ -95,7 +87,6 @@ def main(args):
       enable_dcgm=args.enable_dcgm,
       epochs=args.epochs,
       iters_per_epoch=args.iters_per_epoch,
-      serial_runner_kwargs=args.serial_runner_kwargs,
       concurrent_runner_kwargs=args.concurrent_runner_kwargs,
       mps_runner_kwargs=args.mps_runner_kwargs,
       hfta_runner_kwargs=args.hfta_runner_kwargs,

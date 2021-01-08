@@ -17,7 +17,7 @@ def find_max_B(try_B, dry_run_repeats=5, B_limit=None):
   while fit(curr_B) and prev_B < curr_B:
     prev_B = curr_B
     curr_B = curr_B * 2
-    if B_limit != None:
+    if B_limit is not None:
       curr_B = min(curr_B, B_limit)
   if prev_B == 0:
     raise RuntimeError("Cannot fit a single model!")

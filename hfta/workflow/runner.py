@@ -13,12 +13,6 @@ MAX_ITERS_PER_EPOCH = 1000000000
 
 
 class Runner:
-  B_LIMIT = None
-
-  def __init__(self, cmds_before_run_task=[], cmds_after_run_task=[]):
-    self.cmds_before_run_task = cmds_before_run_task
-    self.cmds_after_run_task = cmds_after_run_task
-    self.default_env_map = {}
 
   def logging_format(self, msg):
     return '{}: {}'.format(self.mode, msg)
@@ -114,10 +108,9 @@ class Runner:
     self.info('Sweeping precs: {} ...'.format(precs))
     for prec in precs:
       self.info('Measuring prec: {} ...'.format(prec))
-      if device == 'cuda' and device_model == 'a100':
-        self.default_env_map['NVIDIA_TF32_OVERRIDE'] = '1' if prec == 'amp' else '0'
-      for cmd in self.cmds_before_run_task:
-        run_command(cmd)
+      orig_envs = dict(os.environ)
+      if device == 'cuda' and device_model == 'a100' and prec == 'fp32':
+        os.environ['NVIDIA_TF32_OVERRIDE'] = '0'
 
       succeeded = self._sweep_Bs(
           self._plan_Bs(trial_func=trial_func, device=device, prec=prec),
@@ -136,10 +129,9 @@ class Runner:
           iters_per_epoch=iters_per_epoch,
       )
 
-      for cmd in self.cmds_after_run_task:
-        run_command(cmd)
-      if device == 'cuda' and device_model == 'a100':
-        del self.default_env_map['NVIDIA_TF32_OVERRIDE']
+      if device == 'cuda' and device_model == 'a100' and prec == 'fp32':
+        os.environ.clear()
+        os.environ.update(orig_envs)
 
       if not succeeded:
         self.error('prec = {} failed!'.format(prec))
@@ -149,6 +141,7 @@ class Runner:
 
 
 class HardwareSharingRunner(Runner):
+  B_LIMIT = None
 
   def __init__(
       self,
@@ -157,13 +150,7 @@ class HardwareSharingRunner(Runner):
       lambd=None,
       dry_run_epochs=None,
       dry_run_iters_per_epoch=None,
-      cmds_before_run_task=[],
-      cmds_after_run_task=[],
   ):
-    super(HardwareSharingRunner, self).__init__(
-        cmds_before_run_task=cmds_before_run_task,
-        cmds_after_run_task=cmds_after_run_task,
-    )
     self._dry_run_repeats = dry_run_repeats
     self._max_num_Bs = max_num_Bs
     self._lambd = lambd
@@ -235,16 +222,6 @@ def mk_outdir_and_run_trial(
 
 class SerialRunner(Runner):
 
-  def __init__(
-      self,
-      cmds_before_run_task=[],
-      cmds_after_run_task=[],
-  ):
-    super(SerialRunner, self).__init__(
-        cmds_before_run_task=cmds_before_run_task,
-        cmds_after_run_task=cmds_after_run_task,
-    )
-
   @property
   def mode(self):
     return 'serial'
@@ -276,10 +253,6 @@ class SerialRunner(Runner):
           epochs=epochs,
           iters_per_epoch=iters_per_epoch,
           outdir=outdir_prefix,
-          env_map={
-              **self.default_env_map,
-              **os.environ
-          },
       )
       return t.result()
 
@@ -293,8 +266,6 @@ class ConcurrentRunner(HardwareSharingRunner):
       lambd=4.0,
       dry_run_epochs=2,
       dry_run_iters_per_epoch=10,
-      cmds_before_run_task=[],
-      cmds_after_run_task=[],
   ):
     super(ConcurrentRunner, self).__init__(
         dry_run_repeats=dry_run_repeats,
@@ -302,8 +273,6 @@ class ConcurrentRunner(HardwareSharingRunner):
         lambd=lambd,
         dry_run_epochs=dry_run_epochs,
         dry_run_iters_per_epoch=dry_run_iters_per_epoch,
-        cmds_before_run_task=cmds_before_run_task,
-        cmds_after_run_task=cmds_after_run_task,
     )
 
   @property
@@ -338,10 +307,6 @@ class ConcurrentRunner(HardwareSharingRunner):
               epochs=epochs,
               iters_per_epoch=iters_per_epoch,
               outdir=outdirs[b],
-              env_map={
-                  **self.default_env_map,
-                  **os.environ
-              },
           ) for b in range(B)
       ]
       return all([t.result() for t in ts])
@@ -404,8 +369,6 @@ class MIGRunner(ConcurrentRunner):
       lambd=4.0,
       dry_run_epochs=2,
       dry_run_iters_per_epoch=10,
-      cmds_before_run_task=[],
-      cmds_after_run_task=[],
   ):
     super(ConcurrentRunner, self).__init__(
         dry_run_repeats=dry_run_repeats,
@@ -413,8 +376,6 @@ class MIGRunner(ConcurrentRunner):
         lambd=lambd,
         dry_run_epochs=dry_run_epochs,
         dry_run_iters_per_epoch=dry_run_iters_per_epoch,
-        cmds_before_run_task=cmds_before_run_task,
-        cmds_after_run_task=cmds_after_run_task,
     )
 
   @property
@@ -438,7 +399,6 @@ class MIGRunner(ConcurrentRunner):
           mig_dev_ids.append(item.split("UUID: ")[-1][:-1])
     except subprocess.CalledProcessError as e:
       logging.error(e)
-      return []
 
     return mig_dev_ids
 
@@ -447,6 +407,8 @@ class MIGRunner(ConcurrentRunner):
       run_command("{} nvidia-smi mig -dci -i 0".format(self.SUDO))
       run_command("{} nvidia-smi mig -dgi -i 0".format(self.SUDO))
     except subprocess.CalledProcessError as e:
+      # 'returncode==6' indicates it can't find any MIG instance to destory.
+      # That means all MIG instances have been destoryed.
       if e.returncode != 6:
         logging.error(e)
         return e.returncode
@@ -467,13 +429,13 @@ class MIGRunner(ConcurrentRunner):
     mig_instances = self._create_mig_instances(B)
 
     if len(mig_instances) == 0:
-      logging.error(""" CAN NOT FIND ANY MIG DEVICE!
+      raise RuntimeError(""" CAN NOT FIND ANY MIG DEVICE!
             Please enable MIG on A100 with follow command:
               <sudo nvidia-smi -mig 1> 
             And then reboot the system.
             NOTE: After enable MIG, only MIGRunner can be used.
       """)
-      raise RuntimeError()
+
 
     assert len(mig_instances) == B
 
@@ -495,11 +457,11 @@ class MIGRunner(ConcurrentRunner):
                           outdir=outdirs[b],
                           env_map={
                               "CUDA_VISIBLE_DEVICES": mig_instances[b],
-                              **self.default_env_map,
                               **os.environ
                           }) for b in range(B)
       ]
       results = all([t.result() for t in ts])
+      self._distroy_mig_instances()
       time.sleep(1)
       return results
 
@@ -513,8 +475,6 @@ class HFTARunner(HardwareSharingRunner):
       lambd=4.0,
       dry_run_epochs=2,
       dry_run_iters_per_epoch=3,
-      cmds_before_run_task=[],
-      cmds_after_run_task=[],
   ):
     super(HFTARunner, self).__init__(
         dry_run_repeats=dry_run_repeats,
@@ -522,8 +482,6 @@ class HFTARunner(HardwareSharingRunner):
         lambd=lambd,
         dry_run_epochs=dry_run_epochs,
         dry_run_iters_per_epoch=dry_run_iters_per_epoch,
-        cmds_before_run_task=cmds_before_run_task,
-        cmds_after_run_task=cmds_after_run_task,
     )
 
   @property
@@ -550,9 +508,5 @@ class HFTARunner(HardwareSharingRunner):
           epochs=epochs,
           iters_per_epoch=iters_per_epoch,
           outdir=outdir_prefix,
-          env_map={
-              **self.default_env_map,
-              **os.environ
-          },
       )
       return t.result()
