@@ -9,7 +9,7 @@ def find_max_B(try_B, dry_run_repeats=5, B_limit=None):
         return False
     return True
 
-  if B_limit != None and B_limit <= 0:
+  if B_limit is not None and B_limit <= 0:
     raise RuntimeError("B_limit should be greater than 0!")
 
   prev_B = 0
