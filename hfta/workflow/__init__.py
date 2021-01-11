@@ -3,7 +3,6 @@ from .runner import (SerialRunner, ConcurrentRunner, HFTARunner, MPSRunner,
 from .utils import (attach_args, rearrange_runner_kwargs, extract_logging_level,
                     _init_precs, _init_modes)
 from .timing import EpochTimer
-import logging
 
 
 def workflow(

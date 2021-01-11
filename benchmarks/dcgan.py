@@ -52,7 +52,7 @@ def main(args):
 
     if B > 0:
       cmd.append('--hfta')
-    print(" ".join(cmd))
+
     succeeded = True
     try:
       subprocess.run(
