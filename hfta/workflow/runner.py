@@ -436,7 +436,6 @@ class MIGRunner(ConcurrentRunner):
             NOTE: After enable MIG, only MIGRunner can be used.
       """)
 
-
     assert len(mig_instances) == B
 
     with ThreadPoolExecutor(max_workers=B) as executor:

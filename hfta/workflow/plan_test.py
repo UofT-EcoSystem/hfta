@@ -13,7 +13,9 @@ def testcase_find_max_B(max_B, dry_run_repeats, B_limit, unstable_prob):
     else:
       return B <= random.randint(max_B + 1, 2 * max_B)
 
-  actual_max_B = find_max_B(try_B, dry_run_repeats=dry_run_repeats, B_limit=B_limit)
+  actual_max_B = find_max_B(try_B,
+                            dry_run_repeats=dry_run_repeats,
+                            B_limit=B_limit)
   expected_max_B = min(max_B, B_limit) if B_limit is not None else max_B
   assert actual_max_B == expected_max_B
 

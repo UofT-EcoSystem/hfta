@@ -28,3 +28,16 @@ prepare_pointnet_seg() {
     --dataset datasets/shapenetcore_partanno_segmentation_benchmark_v0/ \
     --warmup-data-loading
 }
+
+_download_lsun() {
+  cd datasets || exit
+  git clone https://github.com/fyu/lsun.git
+  cd lsun || exit
+  python download.py -c bedroom
+  cd ../../
+}
+
+prepare_dcgan() {
+  _download_lsun
+  md5sum datasets/lsun/bedroom_train_lmdb/data.mdb > /dev/null
+}
