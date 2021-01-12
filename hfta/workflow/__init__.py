@@ -13,6 +13,7 @@ def workflow(
     precs=None,
     modes=None,
     enable_dcgm=True,
+    enable_tpu_profiler=True,
     epochs=10,
     iters_per_epoch=MAX_ITERS_PER_EPOCH,
     concurrent_runner_kwargs=None,
@@ -29,6 +30,7 @@ def workflow(
   assert precs is None or isinstance(precs, (list, tuple))
   assert modes is None or isinstance(modes, (list, tuple))
   assert isinstance(enable_dcgm, bool)
+  assert isinstance(enable_tpu_profiler, bool)
   assert isinstance(epochs, int)
   assert isinstance(iters_per_epoch, int)
 
@@ -73,6 +75,10 @@ def workflow(
   }
 
   for runner in runners:
+    if isinstance(runner, SerialRunner) or isinstance(runner, HFTARunner):
+      run_kwargs['enable_tpu_profiler'] = enable_tpu_profiler
+    else:
+      run_kwargs['enable_tpu_profiler'] = False
     runner.info('Starting with run_kwargs = {}'.format(run_kwargs))
     succeeded = runner.run(**run_kwargs)
     if not succeeded:
