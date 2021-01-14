@@ -3,9 +3,10 @@ import random
 from hyperopt import hp
 from hyperopt.pyll.stochastic import sample
 
-from .partition import (build_sets, disassemble_sets,
-                        partition_hyperparameter_sets, limit_partition_size)
-from .utils import hash_dict, build_capacity_spec
+from hfta.hfht.partition import (build_sets, disassemble_sets,
+                                 partition_hyperparameter_sets,
+                                 limit_partition_size)
+from hfta.hfht.utils import hash_dict, build_capacity_spec
 
 
 def test_all_hyperparameter_sets_included_once(sets, partitions):
@@ -75,8 +76,45 @@ def test():
       'batch_size': hp.choice('batch_size', (8, 16, 32, 64)),
       'feature_transform': hp.choice('feature_transform', (True, False)),
   }
-  capacity_spec = build_capacity_spec(
-      'capacity_specs/cuda/v100/amp/pointnet_classification.json')
+  nonfusibles_kvs_sets = [
+      {
+          'batch_size': 8,
+          'feature_transform': True,
+      },
+      {
+          'batch_size': 16,
+          'feature_transform': True,
+      },
+      {
+          'batch_size': 32,
+          'feature_transform': True,
+      },
+      {
+          'batch_size': 64,
+          'feature_transform': True,
+      },
+      {
+          'batch_size': 8,
+          'feature_transform': False,
+      },
+      {
+          'batch_size': 16,
+          'feature_transform': False,
+      },
+      {
+          'batch_size': 32,
+          'feature_transform': False,
+      },
+      {
+          'batch_size': 64,
+          'feature_transform': False,
+      },
+  ]
+  max_Bs = [35, 19, 9, 5, 45, 21, 13, 6]
+  capacity_spec = {
+      hash_dict(nf_kvs): max_B
+      for nf_kvs, max_B in zip(nonfusibles_kvs_sets, max_Bs)
+  }
   sets_size = random.randint(1, 100)
   ids = range(0, sets_size)
   T = [sample(space) for _ in range(sets_size)]

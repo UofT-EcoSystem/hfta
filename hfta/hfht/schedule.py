@@ -1,17 +1,40 @@
-import json
-import random
-import time
-import concurrent.futures
+import logging
 import os
 import re
+import time
+from concurrent.futures import ThreadPoolExecutor
 from queue import Queue
+
 from .partition import (build_sets, disassemble_sets,
                         partition_hyperparameter_sets_by_capacity)
 from .utils import (hash_dict, build_capacity_spec, run_command,
                     resolve_overlap_runtimes)
+from ..workflow.plan import find_max_B
 
 
 class Scheduler:
+
+  def logging_format(self, msg):
+    return '{}: {}'.format(self.mode, msg)
+
+  def debug(self, msg):
+    logging.debug(self.logging_format(msg))
+
+  def info(self, msg):
+    logging.info(self.logging_format(msg))
+
+  def warning(self, msg):
+    logging.warning(self.logging_format(msg))
+
+  def error(self, msg):
+    logging.error(self.logging_format(msg))
+
+  def critical(self, msg):
+    logging.critical(self.logging_format(msg))
+
+  @property
+  def mode(self):
+    raise NotImplementedError('Runner is an abstract/interface class!')
 
   def execute_params_sets(self, ids, n_iterations, T):
     """
@@ -28,28 +51,99 @@ class SerialScheduler(Scheduler):
   def __init__(self, try_params_callback):
     self.try_params = try_params_callback
 
+  @property
+  def mode(self):
+    return 'serial'
+
   def execute_params_sets(self, ids, n_iterations, T):
     results, early_stops, runtimes = [], [], []
     for i, t in zip(ids, T):
-      print('Running id={}, t={}...'.format(i, t))
+      self.info('Running id={}, t={}...'.format(i, t))
       tic = time.perf_counter()
       res, es = self.try_params(i, n_iterations, t)
       rt = time.perf_counter() - tic
-      print('==> res={}, early_stop={}, runtime={}'.format(res, es, rt))
+      self.info('==> res={}, early_stop={}, runtime={}'.format(res, es, rt))
       results.append(res)
       early_stops.append(es)
       runtimes.append(rt)
     return results, early_stops, runtimes
 
 
-class ConcurrentScheduler(Scheduler):
+class HardwareSharingScheduler(Scheduler):
 
-  def __init__(self, try_params_callback, num_concurrent):
+  def __init__(
+      self,
+      dry_run_callback=None,
+      dry_run_repeats=None,
+      dry_run_epochs=None,
+      dry_run_iters_per_epoch=None,
+      nonfusibles=None,
+      B_limit=None,
+  ):
+    self._dry_run = dry_run_callback
+    self._dry_run_repeats = dry_run_repeats
+    self._dry_run_epochs = dry_run_epochs
+    self._dry_run_iters_per_epoch = dry_run_iters_per_epoch
+    self._nonfusibles = nonfusibles
+    self._max_Bs = {}  # map hash_dict(nonfusibles_kvs) to max_B
+    self._B_limit = B_limit
+
+  def _try_B(self, B, nonfusibles_kvs):
+    raise NotImplementedError(
+        'HardwareSharingScheduler is an abstract/interface class!')
+
+  def _find_max_B(self, t):
+    nonfusibles_kvs = {nf: t[nf] for nf in self._nonfusibles}
+    self.info('Querying max_B for nonfusible '
+              'hyper-parameters {} ...'.format(nonfusibles_kvs))
+    nonfusibles_key = hash_dict(nonfusibles_kvs)
+    if nonfusibles_key not in self._max_Bs:
+      self.info('max_B for nonfusibles hyper-parameters {} is unknown! '
+                'Searching...'.format(nonfusibles_kvs))
+
+      def try_B(B):
+        return self._try_B(B, nonfusibles_kvs)
+
+      max_B = find_max_B(
+          try_B,
+          dry_run_repeats=self._dry_run_repeats,
+          B_limit=self._B_limit,
+      )
+      self.info('Found max_B = {} !'.format(max_B))
+      self._max_Bs[nonfusibles_key] = max_B
+      self.info('Now the mapping from nonfusible hyper-parameters to '
+                'max_B becomes {}'.format(self._max_Bs))
+    max_B = self._max_Bs[nonfusibles_key]
+    self.info('Queried max_B = {} !'.format(max_B))
+    return max_B
+
+
+class ConcurrentScheduler(HardwareSharingScheduler):
+
+  def __init__(
+      self,
+      try_params_callback=None,
+      dry_run_callback=None,
+      dry_run_repeats=10,
+      dry_run_epochs=2,
+      dry_run_iters_per_epoch=10,
+      nonfusibles=None,
+  ):
+    super(ConcurrentScheduler, self).__init__(
+        dry_run_callback=dry_run_callback,
+        dry_run_repeats=dry_run_repeats,
+        dry_run_epochs=dry_run_epochs,
+        dry_run_iters_per_epoch=dry_run_iters_per_epoch,
+        nonfusibles=nonfusibles,
+    )
     self.try_params = try_params_callback
-    self.num_concurrent = num_concurrent
     self.sudo = "" if os.geteuid() == 0 else "sudo"
 
-  def _setup(self):
+  @property
+  def mode(self):
+    return 'concurrent'
+
+  def _setup(self, num_concurrent):
     pass
 
   def _teardown(self):
@@ -64,7 +158,7 @@ class ConcurrentScheduler(Scheduler):
     pass
 
   def _execute_one_params_set(self, id, n_iterations, t):
-    print('Running id={}, t={}...'.format(id, t))
+    self.info('Running id={}, t={}...'.format(id, t))
 
     env_vars = self._one_params_set_setup(id, n_iterations, t)
 
@@ -74,19 +168,43 @@ class ConcurrentScheduler(Scheduler):
 
     self._one_params_set_teardown(id, n_iterations, t)
 
-    print('==> res={}, early_stop={}, runtime(not normalized)={}'.format(
+    self.info('==> res={}, early_stop={}, runtime(not normalized)={}'.format(
         res, es, toc - tic))
     return res, es, (tic, toc)
 
   def execute_params_sets(self, ids, n_iterations, T):
+    num_concurrent = min([self._find_max_B(t) for t in T])
+    self.info('Concluded that num_concurrent = {}!'.format(num_concurrent))
+    return self._execute_params_sets(ids, n_iterations, T, num_concurrent)
+
+  def _try_B(self, B, nonfusibles_kvs):
+
+    def dry_run_wrapper(b):
+      env_vars = self._one_params_set_setup(b, 0, None)
+      status = self._dry_run(
+          B=0,
+          nonfusibles_kvs=nonfusibles_kvs,
+          epochs=self._dry_run_epochs,
+          iters_per_epoch=self._dry_run_iters_per_epoch,
+          env_vars=env_vars,
+      )
+      self._one_params_set_teardown(b, 0, None)
+      return status
+
+    self._setup(num_concurrent)
+    with ThreadPoolExecutor(max_workers=B) as executor:
+      threads = [executor.submit(dry_run_wrapper, b) for b in range(B)]
+      succeeded = all([thread.result() for thread in threads])
+    self._teardown()
+    return succeeded
+
+  def _execute_params_sets(self, ids, n_iterations, T, num_concurrent):
     results, early_stops, runtimes = [], [], []
 
-    self._setup()
+    self._setup(num_concurrent)
 
     try:
-      with concurrent.futures.ThreadPoolExecutor(
-          max_workers=self.num_concurrent) as executor:
-
+      with ThreadPoolExecutor(max_workers=num_concurrent) as executor:
         # create a pool of threads
         # launching multiple evaluations asynchronously that may use more
         # processes
@@ -111,20 +229,18 @@ class ConcurrentScheduler(Scheduler):
 
 class MPSScheduler(ConcurrentScheduler):
 
-  def __init__(self, try_params_callback, num_concurrent):
-    super().__init__(try_params_callback, num_concurrent)
-    self.orig_env = dict(os.environ)
+  def __init__(self, **kwargs):
+    super(MPSScheduler, self).__init__(**kwargs)
+    self._orig_env = None
+
+  @property
+  def mode(self):
+    return 'mps'
 
   # overrides base
-  def _setup(self):
-    self._export_mps_env_vars()
-
-  # overrides base
-  def _teardown(self):
-    self._clean_up_mps_env_vars()
-
-  def _export_mps_env_vars(self):
-    print("Set up the environment to use MPS ...")
+  def _setup(self, num_concurrent):
+    self._orig_env = dict(os.environ)
+    self.info("Set up the environment to use MPS ...")
     cmds_to_run = [
         "{} nvidia-smi -i 0 -c EXCLUSIVE_PROCESS".format(self.sudo),
         "nvidia-cuda-mps-control -d",
@@ -136,8 +252,9 @@ class MPSScheduler(ConcurrentScheduler):
     os.environ["CUDA_MPS_PIPE_DIRECTORY"] = "/tmp/nvidia-mps"
     os.environ["CUDA_MPS_LOG_DIRECTORY"] = "/tmp/nvidia-log"
 
-  def _clean_up_mps_env_vars(self):
-    print("Clean up the environment to use MPS ...")
+  # overrides base
+  def _teardown(self):
+    self.info("Clean up the environment to use MPS ...")
     cmds_to_run = [
         "{} nvidia-cuda-mps-control ".format(self.sudo),
         "{} nvidia-smi -i 0 -c 0".format(self.sudo),
@@ -150,7 +267,7 @@ class MPSScheduler(ConcurrentScheduler):
 
     # restore the environment
     os.environ.clear()
-    os.environ.update(self.orig_env)
+    os.environ.update(self._orig_env)
 
 
 class MIGScheduler(ConcurrentScheduler):
@@ -165,11 +282,8 @@ class MIGScheduler(ConcurrentScheduler):
       7: '19,19,19,19,19,19,19',  # 7 * 1/7
   }
 
-  def __init__(self, try_params_callback, num_concurrent):
-    super().__init__(try_params_callback, num_concurrent)
-
-    if num_concurrent > 7 or num_concurrent <= 0:
-      raise ValueError("MIG does not support concurrent workload> 7 or <=0")
+  def __init__(self, **kwargs):
+    super(MIGScheduler, self).__init__(B_limit=7, **kwargs)
 
     # check that mig is enabled
     mgi_query_str = ("nvidia-smi  --query-gpu=mig.mode.current "
@@ -180,20 +294,27 @@ class MIGScheduler(ConcurrentScheduler):
                          "\"{} nvidia-smi  -mig 1\" and reboot the machine "
                          "to enable it".format(self.sudo))
 
-    self.orig_env = dict(os.environ)
+    self.orig_env = None
     self.mig_GPU_IDs = None
     self.device_queue = Queue()
     self.param_id_dev_map = {}
 
-  def _setup(self):
+  @property
+  def mode(self):
+    return 'mig'
+
+  def _setup(self, num_concurrent):
+    if num_concurrent > 7 or num_concurrent <= 0:
+      raise ValueError("MIG does not support concurrent workload> 7 or <=0")
+    self.orig_env = dict(os.environ)
     # clean up the current instances
     # could be the case that none exists but that is OK
     self._destroy_mig_instances()
     # create new instances based on concurrent width
-    self._create_mig_instances()
+    self._create_mig_instances(num_concurrent)
 
   def _teardown(self):
-    print("Clean up the environment for MIG ...")
+    self.info("Clean up the environment for MIG ...")
 
     self._destroy_mig_instances()
     # restore the environment
@@ -202,7 +323,7 @@ class MIGScheduler(ConcurrentScheduler):
 
   def _one_params_set_setup(self, id, n_iterations, t):
     dev = self._acquire_mig_instance()
-    env_vars = {"CUDA_VISIBLE_DEVICES": dev}
+    env_vars = {"CUDA_VISIBLE_DEVICES": dev, **os.environ}
     self.param_id_dev_map[id] = dev
     return env_vars
 
@@ -211,10 +332,10 @@ class MIGScheduler(ConcurrentScheduler):
     self._release_mig_instance(dev)
     del self.param_id_dev_map[id]
 
-  def _create_mig_instances(self):
-    print("Set up the environment to use MIG ...")
+  def _create_mig_instances(self, num_concurrent):
+    self.info("Set up the environment to use MIG ...")
 
-    mig_profile_str = MIGScheduler.MIG_PROFILE_CONFIGS[self.num_concurrent]
+    mig_profile_str = MIGScheduler.MIG_PROFILE_CONFIGS[num_concurrent]
 
     # create virtual MIG GPU instances
     cmds_to_run = [
@@ -224,7 +345,7 @@ class MIGScheduler(ConcurrentScheduler):
     for cmd in cmds_to_run:
       run_command(cmd)
 
-    self.mig_GPU_IDs = self._query_mig_devices()
+    self.mig_GPU_IDs = self._query_mig_devices(num_concurrent)
     for dev_id in self.mig_GPU_IDs:
       self.device_queue.put(dev_id)
 
@@ -238,12 +359,12 @@ class MIGScheduler(ConcurrentScheduler):
     for cmd in cmds_to_run:
       run_command(cmd, ignore_error=True)
 
-  def _query_mig_devices(self):
+  def _query_mig_devices(self, num_concurrent):
     # query the devices
     get_gpu_dev_str = "nvidia-smi -L"
     GPU_IDs_raw = run_command(get_gpu_dev_str).split("\n")
     mig_GPU_IDs_raw = [s for s in GPU_IDs_raw if "MIG" in s]
-    assert len(mig_GPU_IDs_raw) == self.num_concurrent
+    assert len(mig_GPU_IDs_raw) == num_concurrent
 
     # parse the output to reflect the actual output
     search_str = "MIG.*Device.*UUID: (.*)\)"
@@ -270,24 +391,57 @@ class MIGScheduler(ConcurrentScheduler):
     self.device_queue.put(dev)
 
 
-class HFTAScheduler(Scheduler):
+class HFTAScheduler(HardwareSharingScheduler):
 
-  def __init__(self, try_params_callback, nonfusibles, capacity_spec_path):
+  def __init__(
+      self,
+      try_params_callback=None,
+      dry_run_callback=None,
+      dry_run_repeats=1,
+      dry_run_epochs=2,
+      dry_run_iters_per_epoch=3,
+      nonfusibles=None,
+  ):
+    super(HFTAScheduler, self).__init__(
+        dry_run_callback=dry_run_callback,
+        dry_run_repeats=dry_run_repeats,
+        dry_run_epochs=dry_run_epochs,
+        dry_run_iters_per_epoch=dry_run_iters_per_epoch,
+        nonfusibles=nonfusibles,
+    )
     self.try_params = try_params_callback
-    self.nonfusibles = nonfusibles
-    self.capacity_spec = build_capacity_spec(capacity_spec_path)
+
+  @property
+  def mode(self):
+    return 'hfta'
+
+  def _update_max_Bs_if_needed(self, T):
+    [self._find_max_B(t) for t in T]
+
+  def _try_B(self, B, nonfusibles_kvs):
+
+    succeeded = self._dry_run(
+        B=B,
+        nonfusibles_kvs=nonfusibles_kvs,
+        epochs=self._dry_run_epochs,
+        iters_per_epoch=self._dry_run_iters_per_epoch,
+        env_vars=None,
+    )
+
+    return succeeded
 
   def execute_params_sets(self, ids, n_iterations, T):
+    self._update_max_Bs_if_needed(T)
     sets = build_sets(ids, T)
     partitions = partition_hyperparameter_sets_by_capacity(
         sets,
-        self.nonfusibles,
-        self.capacity_spec,
+        self._nonfusibles,
+        self._max_Bs,
     )
     partitions_ids, partitions_T = disassemble_sets(partitions)
     results, early_stops, runtimes = {}, {}, {}
     for partition_ids, partition_T in zip(partitions_ids, partitions_T):
-      print('Running partition_ids={}, partition_T={}'.format(
+      self.info('Running partition_ids={}, partition_T={}'.format(
           partition_ids, partition_T))
       # Generate fused T.
       fused_T = {}
@@ -300,7 +454,7 @@ class HFTAScheduler(Scheduler):
       tic = time.perf_counter()
       res, es = self.try_params(partition_ids, n_iterations, fused_T)
       rt = (time.perf_counter() - tic) / len(partition_ids)
-      print('==> res={}, early_stop={}, runtime={}'.format(res, es, rt))
+      self.info('==> res={}, early_stop={}, runtime={}'.format(res, es, rt))
       # Map the results back to its ids.
       for i, r, e in zip(partition_ids, res, es):
         results[i] = r

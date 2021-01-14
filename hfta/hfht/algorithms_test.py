@@ -1,6 +1,7 @@
+import logging
+import numpy as np
 import random
 import time
-import numpy as np
 
 from hyperopt import hp
 from hyperopt.pyll.stochastic import sample
@@ -52,10 +53,23 @@ def test_hfta(space, algo):
         'z': z
     } for y, z in zip(res['y'].tolist(), res['z'].tolist())], [False] * len(ids)
 
+  def dry_run(
+      B=None,
+      nonfusibles_kvs=None,
+      epochs=None,
+      iters_per_epoch=None,
+      env_vars=None,
+  ):
+    assert epochs == 2
+    assert iters_per_epoch == 3
+    assert env_vars is None
+    expected_B = nonfusibles_kvs['beta'] * 3 + 1
+    return B <= expected_B
+
   scheduler = HFTAScheduler(
-      try_params,
-      ['beta'],
-      './capacity_specs/mock/spec.json',
+      try_params_callback=try_params,
+      dry_run_callback=dry_run,
+      nonfusibles=['beta'],
   )
   if algo == 'hyperband':
     algo = Hyperband(get_params, scheduler, 'y', goal='min')
@@ -66,7 +80,7 @@ def test_hfta(space, algo):
 
 
 if __name__ == '__main__':
-
+  logging.basicConfig(level='INFO')
   space = {
       'alpha': hp.uniform('alpha', 0.01, 0.1),
       'beta': hp.choice('beta', (1, 2, 3, 4)),

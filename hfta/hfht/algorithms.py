@@ -1,3 +1,4 @@
+import logging
 import time
 from math import log, ceil
 from functools import partial
@@ -48,10 +49,10 @@ class Algorithm:
 
   def run(self):
     algo_name = type(self).__name__
-    print("Running {} ...".format(algo_name))
+    logging.info("Running {} ...".format(algo_name))
     self.run_reference_tic = time.perf_counter()
     results = self._run()
-    print("Done {} !".format(algo_name))
+    logging.info("Done {} !".format(algo_name))
     return results
 
   def _build_trials_and_update_search_states(self, n_iters, ids, T, results,
@@ -105,7 +106,7 @@ class RandomSearch(Algorithm):
     # n random configurations
     T = [self.get_params() for _ in range(self.n_configs)]
 
-    print("\n*** {} configurations x {:.1f} iterations each".format(
+    logging.info("\n*** {} configurations x {:.1f} iterations each".format(
         len(T),
         self.n_iters,
     ))
@@ -131,7 +132,7 @@ class Hyperband(Algorithm):
       goal='min',
       max_iters=81,
       eta=3,
-      skip_last=0,
+      skip_last=2,
   ):
     super(Hyperband, self).__init__(
         get_params_callback,
@@ -170,7 +171,7 @@ class Hyperband(Algorithm):
         n_configs = n * self.eta**(-i)
         n_iterations = r * self.eta**(i)
 
-        print("\n*** {} configurations x {:.1f} iterations each".format(
+        logging.info("\n*** {} configurations x {:.1f} iterations each".format(
             n_configs, n_iterations))
 
         allocated_ids = self._allocate_ids(T)

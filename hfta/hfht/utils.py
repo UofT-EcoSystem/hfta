@@ -1,3 +1,4 @@
+import argparse
 import json
 import subprocess
 
@@ -35,10 +36,10 @@ def run_command(cmd, input=None, ignore_error=False):
   print("Running command: {}".format(cmd))
   try:
     output = subprocess.check_output(
-            cmd.split(),
-            universal_newlines=True,
-            input=input,
-        )
+        cmd.split(),
+        universal_newlines=True,
+        input=input,
+    )
     print(output)
     return output
   except subprocess.CalledProcessError as e:
@@ -156,3 +157,90 @@ def to_csv_dicts(space, history, trajectory):
       'acc': [t['acc'] for t in trajectory],
   }
   return history_csv, trajectory_csv
+
+
+def attach_common_args(parser=argparse.ArgumentParser('HFHT Arguments')):
+  parser.add_argument(
+      '--mode',
+      type=str,
+      default='hfta',
+      choices=['serial', 'hfta', 'concurrent', 'mps', 'mig'],
+      help="the hardware sharing mode",
+  )
+  parser.add_argument(
+      '--seed',
+      type=int,
+      help='Seed',
+      default=1117,
+  )
+  parser.add_argument(
+      '--hyperband:max-iters',
+      type=int,
+      default=None,
+      help='Hyperband maximum iterations per configuration',
+  )
+  parser.add_argument(
+      '--hyperband:eta',
+      type=int,
+      default=None,
+      help='Hyperband configuration downsampling rate',
+  )
+  parser.add_argument(
+      '--hyperband:skip-last',
+      type=int,
+      default=None,
+      help='Hyperband skipping last waves of configuration downsampling',
+  )
+  parser.add_argument(
+      '--random:n-iters',
+      type=int,
+      default=None,
+      help='RandomSearch (constant) iterations per configuration',
+  )
+  parser.add_argument(
+      '--random:n-configs',
+      type=int,
+      default=None,
+      help='RandomSearch total number of configurations',
+  )
+  parser.add_argument(
+      '--algorithm',
+      type=str,
+      default='hyperband',
+      choices=['hyperband', 'random'],
+      help="the hyper-parameter tuning algorithm to use",
+  )
+  parser.add_argument(
+      '--outdir',
+      type=str,
+      default=None,
+      help='path to the output dir',
+  )
+  parser.add_argument(
+      '--dry-run-repeats',
+      type=int,
+      default=None,
+      help='number of times to repeat the dry run; '
+      'only used when searching for max_B',
+  )
+  parser.add_argument(
+      '--dry-run-epochs',
+      type=int,
+      default=None,
+      help='number of epochs for the dry run; '
+      'only used when searching for max_B',
+  )
+  parser.add_argument(
+      '--dry-run-iters-per-epoch',
+      type=int,
+      default=None,
+      help='number of epochs for the dry run; '
+      'only used when searching for max_B',
+  )
+  parser.add_argument(
+      '--log-level',
+      type=str,
+      default='INFO',
+      help='logging level',
+  )
+  return parser
