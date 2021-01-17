@@ -9,7 +9,9 @@ from pprint import pformat
 from .schedule import (SerialScheduler, ConcurrentScheduler, MPSScheduler,
                        MIGScheduler, HFTAScheduler)
 from .algorithms import RandomSearch, Hyperband
-from .utils import handle_integers, attach_common_args
+from .utils import (handle_integers, attach_common_args,
+                    rearrange_algorithm_kwargs, generate_fusible_param_flags,
+                    generate_nonfusible_param)
 
 
 def _assert_positive_int_or_none(v):
@@ -55,7 +57,11 @@ def tune_hyperparameters(
   if mode == 'serial':
     scheduler = SerialScheduler(try_params_callback)
   else:
-    kwargs = {'dry_run_callback': dry_run_callback, 'nonfusibles': nonfusibles}
+    kwargs = {
+        'try_params_callback': try_params_callback,
+        'dry_run_callback': dry_run_callback,
+        'nonfusibles': nonfusibles,
+    }
     _expand_dict_if_valid(kwargs, 'dry_run_repeats', dry_run_repeats)
     _expand_dict_if_valid(kwargs, 'dry_run_epochs', dry_run_epochs)
     _expand_dict_if_valid(
@@ -77,16 +83,20 @@ def tune_hyperparameters(
     params = sample(space, rng=rng_state)
     return handle_integers(params)
 
-  tuners = {'hyperband': Hyperband, 'random': Random}
+  tuners = {'hyperband': Hyperband, 'random': RandomSearch}
+  algorithm_config = {}
+  if algorithm in algorithm_configs:
+    for k, v in algorithm_configs[algorithm].items():
+      _expand_dict_if_valid(algorithm_config, k, v)
   # To ensure a fair comparison between Hyperband and Random Search,
   # also pass in hyperband related parameters to decide the size
-  # of candidate set, and the number of training epoches.
+  # of candidate set, and the number of training epochs.
   tuner = tuners[algorithm](
       get_params,
       scheduler,
       metric,
       goal=goal,
-      **algorithm_configs,
+      **algorithm_config,
   )
 
   history, trajectory = tuner.run()

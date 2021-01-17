@@ -7,6 +7,33 @@ def hash_dict(d):
   return ','.join('{}:{}'.format(k, d[k]) for k in sorted(d.keys()))
 
 
+def fuse_dicts(ds):
+  """ Fuse a list/tuple of dicts.
+  For example:
+
+  fuse_dicts([
+      {'a':1, 'b':10},
+      {'a':2, 'b':20},
+      {'a':3, 'b':30},
+  ])
+  > {'a': [1, 2, 3], 'b': [10, 20, 30]}
+
+  fuse_dicts([
+      {'a':1, 'b':10},
+      {'b':20, 'c':200},
+      {'a':3, 'c':300},
+  ])
+  > {'a': [1, None, 3], 'b': [10, 20, None], 'c': [None, 200, 300]}
+
+  """
+  ks = set((k for d in ds for k in d.keys()))
+  fused_d = {k: [] for k in ks}
+  for d in ds:
+    for k in ks:
+      fused_d[k].append(d[k] if k in d else None)
+  return fused_d
+
+
 # Handle floats which should be integers
 # Works with flat params
 def handle_integers(params):
@@ -174,31 +201,31 @@ def attach_common_args(parser=argparse.ArgumentParser('HFHT Arguments')):
       default=1117,
   )
   parser.add_argument(
-      '--hyperband:max-iters',
+      '--hyperband-max-iters',
       type=int,
       default=None,
       help='Hyperband maximum iterations per configuration',
   )
   parser.add_argument(
-      '--hyperband:eta',
+      '--hyperband-eta',
       type=int,
       default=None,
       help='Hyperband configuration downsampling rate',
   )
   parser.add_argument(
-      '--hyperband:skip-last',
+      '--hyperband-skip-last',
       type=int,
       default=None,
       help='Hyperband skipping last waves of configuration downsampling',
   )
   parser.add_argument(
-      '--random:n-iters',
+      '--random-n-iters',
       type=int,
       default=None,
       help='RandomSearch (constant) iterations per configuration',
   )
   parser.add_argument(
-      '--random:n-configs',
+      '--random-n-configs',
       type=int,
       default=None,
       help='RandomSearch total number of configurations',
@@ -244,3 +271,17 @@ def attach_common_args(parser=argparse.ArgumentParser('HFHT Arguments')):
       help='logging level',
   )
   return parser
+
+
+def _build_kwargs_for(args, algorithm, keys):
+  for k in keys:
+    v = getattr(args, '{}_{}'.format(algorithm, k))
+    if v is not None:
+      getattr(args, '{}_{}'.format(algorithm, 'kwargs'))[k] = v
+
+
+def rearrange_algorithm_kwargs(args):
+  for algorithm in ['hyperband', 'random']:
+    setattr(args, '{}_kwargs'.format(algorithm), {})
+  _build_kwargs_for(args, 'hyperband', ['max_iters', 'eta', 'skip_last'])
+  _build_kwargs_for(args, 'random', ['n_iters', 'n_configs'])

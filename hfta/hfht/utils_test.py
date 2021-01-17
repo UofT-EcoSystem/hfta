@@ -1,4 +1,4 @@
-from hfta.hfht.utils import resolve_overlap_runtimes
+from hfta.hfht.utils import resolve_overlap_runtimes, fuse_dicts
 
 TESTS = []
 
@@ -65,6 +65,93 @@ def test_resolve_overlap_runtimes():
       print("Expecting {} got {}".format(expected, res))
       correct = False
   return correct
+
+
+@register_test('fuse_dicts')
+def test_fuse_dicts():
+  ins = [
+      # Empty list.
+      [],
+      # Single element.
+      [
+          {
+              'a': 1
+          },
+      ],
+      [
+          {
+              'a': 1,
+              'b': 10
+          },
+      ],
+      # Multiple elements.
+      [
+          {
+              'a': 1,
+              'b': 10,
+              'c': 100
+          },
+          {
+              'a': 2,
+              'b': 20,
+              'c': 200
+          },
+          {
+              'a': 3,
+              'b': 30,
+              'c': 300
+          },
+      ],
+      # Multiple elements with missing values.
+      [
+          {
+              'a': 1,
+              'b': 10,
+          },
+          {
+              'b': 20,
+              'c': 200
+          },
+          {
+              'a': 3,
+              'c': 300
+          },
+      ],
+  ]
+  expected_outs = [
+      {},
+      {
+          'a': [1]
+      },
+      {
+          'a': [1],
+          'b': [10]
+      },
+      {
+          'a': [1, 2, 3],
+          'b': [10, 20, 30],
+          'c': [100, 200, 300]
+      },
+      {
+          'a': [1, None, 3],
+          'b': [10, 20, None],
+          'c': [None, 200, 300]
+      },
+  ]
+
+  def _assert_equal(a, b):
+    assert len(a) == len(b)
+    for ka, va in a.items():
+      assert ka in b
+      vb = b[ka]
+      assert len(va) == len(vb)
+      for ea, eb in zip(va, vb):
+        assert ea == eb
+
+  for inp, expected_out in zip(ins, expected_outs):
+    _assert_equal(fuse_dicts(inp), expected_out)
+
+  return True
 
 
 if __name__ == "__main__":

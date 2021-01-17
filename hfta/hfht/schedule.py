@@ -7,8 +7,8 @@ from queue import Queue
 
 from .partition import (build_sets, disassemble_sets,
                         partition_hyperparameter_sets_by_capacity)
-from .utils import (hash_dict, build_capacity_spec, run_command,
-                    resolve_overlap_runtimes)
+from .utils import (hash_dict, run_command, resolve_overlap_runtimes,
+                    fuse_dicts)
 from ..workflow.plan import find_max_B
 
 
@@ -102,7 +102,13 @@ class HardwareSharingScheduler(Scheduler):
                 'Searching...'.format(nonfusibles_kvs))
 
       def try_B(B):
-        return self._try_B(B, nonfusibles_kvs)
+        self.info('Trying B = {} ...'.format(B))
+        succeeded = self._try_B(B, nonfusibles_kvs)
+        if succeeded:
+          self.info('--> OK')
+        else:
+          self.info('--> FAIL')
+        return succeeded
 
       max_B = find_max_B(
           try_B,
@@ -191,7 +197,7 @@ class ConcurrentScheduler(HardwareSharingScheduler):
       self._one_params_set_teardown(b, 0, None)
       return status
 
-    self._setup(num_concurrent)
+    self._setup(B)
     with ThreadPoolExecutor(max_workers=B) as executor:
       threads = [executor.submit(dry_run_wrapper, b) for b in range(B)]
       succeeded = all([thread.result() for thread in threads])
@@ -444,12 +450,7 @@ class HFTAScheduler(HardwareSharingScheduler):
       self.info('Running partition_ids={}, partition_T={}'.format(
           partition_ids, partition_T))
       # Generate fused T.
-      fused_T = {}
-      for t in partition_T:
-        for k, v in t.items():
-          if k not in fused_T:
-            fused_T[k] = []
-          fused_T[k].append(v)
+      fused_T = fuse_dicts(partition_T)
       # Running a fused trial.
       tic = time.perf_counter()
       res, es = self.try_params(partition_ids, n_iterations, fused_T)

@@ -6,6 +6,28 @@ from functools import partial
 
 class Algorithm:
 
+  def logging_format(self, msg):
+    return '{}: {}'.format(self.name, msg)
+
+  def debug(self, msg):
+    logging.debug(self.logging_format(msg))
+
+  def info(self, msg):
+    logging.info(self.logging_format(msg))
+
+  def warning(self, msg):
+    logging.warning(self.logging_format(msg))
+
+  def error(self, msg):
+    logging.error(self.logging_format(msg))
+
+  def critical(self, msg):
+    logging.critical(self.logging_format(msg))
+
+  @property
+  def name(self):
+    raise NotImplementedError('Algorithm is an abstract/interface class!')
+
   def __init__(self, get_params_callback, scheduler, metric, goal='min'):
     self.get_params = get_params_callback
     self.scheduler = scheduler
@@ -49,10 +71,10 @@ class Algorithm:
 
   def run(self):
     algo_name = type(self).__name__
-    logging.info("Running {} ...".format(algo_name))
+    self.info("Running {} ...".format(algo_name))
     self.run_reference_tic = time.perf_counter()
     results = self._run()
-    logging.info("Done {} !".format(algo_name))
+    self.info("Done {} !".format(algo_name))
     return results
 
   def _build_trials_and_update_search_states(self, n_iters, ids, T, results,
@@ -100,13 +122,17 @@ class RandomSearch(Algorithm):
     self.n_iters = n_iters
     self.n_configs = n_configs
 
+  @property
+  def name(self):
+    return 'random'
+
   # can be called multiple times
   def _run(self):
 
     # n random configurations
     T = [self.get_params() for _ in range(self.n_configs)]
 
-    logging.info("\n*** {} configurations x {:.1f} iterations each".format(
+    self.info("\n*** {} configurations x {:.1f} iterations each".format(
         len(T),
         self.n_iters,
     ))
@@ -149,6 +175,10 @@ class Hyperband(Algorithm):
     self.s_max = int(logeta(self.max_iters))
     self.B = (self.s_max + 1) * self.max_iters
 
+  @property
+  def name(self):
+    return 'hyperband'
+
   # can be called multiple times
   def _run(self):
 
@@ -171,7 +201,7 @@ class Hyperband(Algorithm):
         n_configs = n * self.eta**(-i)
         n_iterations = r * self.eta**(i)
 
-        logging.info("\n*** {} configurations x {:.1f} iterations each".format(
+        self.info("\n*** {} configurations x {:.1f} iterations each".format(
             n_configs, n_iterations))
 
         allocated_ids = self._allocate_ids(T)
