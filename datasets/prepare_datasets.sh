@@ -28,3 +28,11 @@ prepare_pointnet_seg() {
     --dataset datasets/shapenetcore_partanno_segmentation_benchmark_v0/ \
     --warmup-data-loading
 }
+
+prepare_cifar10() {
+  if [ ! -d "datasets/cifar-10-batches-py" ]; then
+    wget https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz
+    tar -xf cifar-10-python.tar.gz
+    mv cifar-10-batches-py cifar10
+  fi
+}

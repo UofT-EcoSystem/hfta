@@ -127,3 +127,52 @@ plot_pointnet_seg () {
     _plot_dcgm_pointnet seg
   fi
 }
+
+
+plot_dcgm_mobilenet() {
+  local outdirs=()
+  for outdir in ${OUTDIR_ROOT}/mobilenet/run*/
+  do
+    outdirs+=(${outdir})
+  done
+  dcgm_parser \
+    --outdirs "${outdirs[@]}" \
+    --device-model ${DEVICE_MODEL} \
+    --savedir ${OUTDIR_ROOT}/mobilenet/dcgm-${DEVICE}-${DEVICE_MODEL}/ \
+    --plot
+}
+
+plot_speedups_dcgan() {
+  local outdirs=()
+  for outdir in ${OUTDIR_ROOT}/mobilenet/run*/
+  do
+    outdirs+=(${outdir})
+  done
+  timing_parser \
+    --outdirs "${outdirs[@]}" \
+    --device ${DEVICE}\
+    --device-model ${DEVICE_MODEL} \
+    --save ${OUTDIR_ROOT}/mobilenet/${DEVICE}-${DEVICE_MODEL} \
+    --plot
+}
+
+workflow_mobilenet() {
+  local repeats=${1:-"3"}
+  local dataset=${2:-"cifar10"} # cifar10 or imagenet
+  local version=${3:-"v2"} # v2 v3s or v3l
+  local epochs=5
+
+  local i
+  for ((i=0; i<${repeats}; i++)); do
+    python3.6 benchmarks/mobilenet.py \
+      --dataset ${dataset} \
+      --version ${version} \
+      --outdir_root ${OUTDIR_ROOT}/mobilenet/run${i}/ \
+      --epochs ${epochs} \
+      --iters-per-epoch 500 \
+      --dataroot ../datasets/${dataset} \
+      --device ${DEVICE} \
+      --device-model ${DEVICE_MODEL}
+  done
+}
+
