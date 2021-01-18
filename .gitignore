@@ -133,6 +133,11 @@ dmypy.json
 
 # datasets
 datasets/shapenetcore_partanno_segmentation_benchmark_v0/
+datasets/lsun
 
 # outputs
 benchmarks/pointnet/
+benchmarks/dcgan/
+
+#caches
+/examples/dcgan/_cache_*

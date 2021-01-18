@@ -1,0 +1,4 @@
+49c89bc15a9276f3ebd73c10d67832e5  ./datasets/lsun/bedroom_val_lmdb/lock.mdb
+87b12b9f22acf2debda8e7cba9de5059  ./datasets/lsun/bedroom_val_lmdb/data.mdb
+c70b66e76ac47f85891164e1515c2ae3  ./datasets/lsun/bedroom_train_lmdb/data.mdb
+ff4ba2368f3720c02616fad085ce38c4  ./datasets/lsun/bedroom_train_lmdb/lock.mdb
