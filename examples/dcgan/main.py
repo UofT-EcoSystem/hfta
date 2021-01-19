@@ -25,11 +25,10 @@ from hfta.workflow import EpochTimer
 
 
 def attach_config_args(parser=argparse.ArgumentParser()):
-  parser.add_argument(
-      '--ngpu',
-      type=int,
-      default=1,
-      help='number of GPUs to use')
+  parser.add_argument('--ngpu',
+                      type=int,
+                      default=1,
+                      help='number of GPUs to use')
   parser.add_argument(
       '--netG',
       default='',
@@ -96,7 +95,7 @@ def attach_config_args(parser=argparse.ArgumentParser()):
       action='store_true',
       help='run the evaluation loop',
   )
-  parser.add_argument('--seed', type=int, help='Seed')
+  parser.add_argument('--seed', type=int, default=1117, help='Seed')
   parser.add_argument(
       '--warmup-data-loading',
       default=False,
@@ -128,7 +127,6 @@ def attach_fusible_args(parser=argparse.ArgumentParser()):
       nargs='*',
       help='beta1 for adam. default=0.5',
   )
-
   return parser
 
 
@@ -172,8 +170,6 @@ try:
 except OSError:
   pass
 
-if args.seed is None:
-  args.seed = random.randint(1, 10000)
 print("Random Seed: ", args.seed)
 random.seed(args.seed)
 torch.manual_seed(args.seed)

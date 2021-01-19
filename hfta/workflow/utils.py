@@ -125,7 +125,6 @@ def attach_args(parser=argparse.ArgumentParser()):
 
 
 def rearrange_runner_kwargs(args):
-  setattr(args, '{}_runner_kwargs'.format("serial"), {})
   for mode in ['concurrent', 'mps', 'hfta', 'mig']:
     runner_kwargs_name = '{}_runner_kwargs'.format(mode)
     setattr(args, runner_kwargs_name, {})
