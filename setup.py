@@ -33,6 +33,6 @@ setup(
     python_requires='>=3.6',
     install_requires=[
         'pandas>=1.1.5', 'numpy', 'scipy', 'matplotlib', 'psutil',
-        'torch>=1.6.0'
+        'torch>=1.6.0', 'hyperopt'
     ],
 )

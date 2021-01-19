@@ -11,7 +11,7 @@ RUN apt update && \
 RUN conda install -y lmdb python-lmdb pandas matplotlib psutil tqdm && \
     conda clean -ya
 
-RUN pip install --no-cache-dir plyfile
+RUN pip install --no-cache-dir plyfile hyperopt
 
 COPY third_party/dcgm/datacenter-gpu-manager_2.0.10_amd64.deb dcgm.deb
 RUN apt-get install -y --no-install-recommends ./dcgm.deb

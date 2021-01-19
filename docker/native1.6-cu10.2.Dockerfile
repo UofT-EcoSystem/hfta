@@ -24,7 +24,7 @@ RUN curl -o ~/miniconda.sh \
 
 ENV PATH /opt/conda/bin:$PATH
 
-RUN pip install --no-cache-dir plyfile
+RUN pip install --no-cache-dir plyfile hyperopt
 
 RUN git clone https://github.com/NVIDIA/PyProf.git && \
     cd PyProf && \
