@@ -28,6 +28,7 @@ _pointnet_warmup_data () {
 _workflow_pointnet () {
   local task=$1
   local repeats=$2
+  local use_mig=${3:-"false"}
 
   _pointnet_warmup_data ${task}
 
@@ -40,6 +41,24 @@ _workflow_pointnet () {
     return -1
   fi
 
+  if [ "${use_mig}" == "true" ]; then
+    local modes_flag="--modes mig"
+  elif [ "${use_mig}" == "false" ]; then
+    if [ "${DEVICE}" == "cuda" ]; then
+      local modes_flag="--modes serial concurrent mps hfta"
+    elif [ "${DEVICE}" == "xla" ]; then
+      local modes_flag="--modes serial hfta"
+    elif [ "${DEVICE}" == "cpu" ]; then
+      local modes_flag="--modes serial concurrent hfta"
+    else
+      echo "Unknown device: ${DEVICE} !"
+      return -1
+    fi
+  else
+    echo "Unknown use_mig: ${use_mig} !"
+    return -1
+  fi
+
   local i
   for ((i=0; i<${repeats}; i++)); do
     python benchmarks/pointnet.py \
@@ -48,6 +67,7 @@ _workflow_pointnet () {
       --iters-per-epoch 1000 \
       --dataroot datasets/shapenetcore_partanno_segmentation_benchmark_v0/ \
       --task ${task} \
+      ${modes_flag} \
       --device ${DEVICE} \
       --device-model ${DEVICE_MODEL}
   done
@@ -82,7 +102,7 @@ _plot_dcgm_pointnet() {
     --plot
 }
 
-plot_dcgm_dcgan() {
+_plot_dcgm_dcgan() {
   local outdirs=()
   for outdir in ${OUTDIR_ROOT}/dcgan/run*/
   do
@@ -95,7 +115,7 @@ plot_dcgm_dcgan() {
     --plot
 }
 
-plot_speedups_dcgan() {
+_plot_speedups_dcgan() {
   local outdirs=()
   for outdir in ${OUTDIR_ROOT}/dcgan/run*/
   do
@@ -132,6 +152,10 @@ workflow_dcgan () {
       --device ${DEVICE} \
       --device-model ${DEVICE_MODEL}
   done
+
+  if [ "${DEVICE}" != "cuda" ]; then
+    return
+  fi
 
   local precs=("fp32" "amp")
   local modes=("mps" "concurrent")
@@ -173,9 +197,21 @@ workflow_dcgan_mig () {
   done
 }
 
+plot_dcgan () {
+  _plot_speedups_dcgan
+  if [ "${DEVICE}" == "cuda" ]; then
+    _plot_dcgm_dcgan
+  fi
+}
+
 workflow_pointnet_cls () {
   local repeats=${1:-"3"}
   _workflow_pointnet cls ${repeats}
+}
+
+workflow_pointnet_cls_mig () {
+  local repeats=${1:-"3"}
+  _workflow_pointnet cls ${repeats} true
 }
 
 plot_pointnet_cls () {
@@ -188,6 +224,11 @@ plot_pointnet_cls () {
 workflow_pointnet_seg () {
   local repeats=${1:-"3"}
   _workflow_pointnet seg ${repeats}
+}
+
+workflow_pointnet_seg_mig () {
+  local repeats=${1:-"3"}
+  _workflow_pointnet seg ${repeats} true
 }
 
 plot_pointnet_seg () {
