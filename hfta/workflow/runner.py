@@ -6,6 +6,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from .dcgm_monitor import dcgm_monitor_start, dcgm_monitor_stop, DcgmMonitor
+from .tpu_monitor import tpu_monitor_start, tpu_monitor_stop, TpuMonitor
 from .plan import find_max_B, expovariate_plan
 from .utils import run_command
 
@@ -63,6 +64,7 @@ class Runner:
       prec='fp32',
       outdir_prefix=None,
       enable_dcgm=None,
+      enable_tpu_profiler=None,
       epochs=10,
       iters_per_epoch=MAX_ITERS_PER_EPOCH,
   ):
@@ -74,6 +76,11 @@ class Runner:
       if enable_dcgm and device == 'cuda':
         monitor = DcgmMonitor(device_model)
         monitor_thread = dcgm_monitor_start(monitor, outdir)
+
+      if enable_tpu_profiler and device == 'xla':
+        self.debug("Enabled TPU profiler - create TPU monitor now")
+        monitor = TpuMonitor("dummy name", 1000)
+        monitor_thread = tpu_monitor_start(monitor, outdir)
 
       try:
         succeeded = self._run_B(
@@ -88,6 +95,9 @@ class Runner:
       finally:
         if enable_dcgm and device == 'cuda':
           dcgm_monitor_stop(monitor, monitor_thread)
+        if enable_tpu_profiler and device == 'xla':
+          self.debug("Stop TPU monitor now")
+          tpu_monitor_stop(monitor, monitor_thread)
       if not succeeded:
         self.error('B = {} failed!'.format(B))
         return succeeded
@@ -102,6 +112,7 @@ class Runner:
       precs=['fp32', 'amp'],
       outdir_prefix=None,
       enable_dcgm=True,
+      enable_tpu_profiler=True,
       epochs=10,
       iters_per_epoch=MAX_ITERS_PER_EPOCH,
   ):
@@ -125,6 +136,7 @@ class Runner:
               prec,
           ),
           enable_dcgm=enable_dcgm,
+          enable_tpu_profiler=enable_tpu_profiler,
           epochs=epochs,
           iters_per_epoch=iters_per_epoch,
       )
