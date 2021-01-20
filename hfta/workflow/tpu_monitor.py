@@ -1,12 +1,13 @@
 import logging
 import os
 import threading
+import time
 from multiprocessing import Process
 
 try:
   from tensorflow.python.profiler import profiler_client
+  from tensorflow.errors import UnavailableError
 except ImportError:
-  logging.warning("Cannot import TPU profiler_client from tensorflow.")
   pass
 
 
@@ -30,60 +31,109 @@ class TpuMonitor:
   def error(self, msg):
     logging.error(self.logging_format(msg))
 
-  def __init__(self, name, duration):
-    """
-    name: the name and log directory of the test run
-    duration: how long do you want to capture the profile (ms)
-    """
-    self.info("Start TPU Monitor ({})".format(name))
-    self.args = self.get_profiler_args(name, duration)
-    self.proc = Process(target=profiler_client.trace, kwargs=self.args)
+  def __init__(self, duration, outdir):
+    self.info("Start TPU Monitor and monitor for {} seconds.".format(duration /
+                                                                     1000))
+    self.args = self.get_profiler_args(duration, outdir)
 
-  def get_profiler_args(self, name, duration):
+  def get_profiler_args(self, duration, outdir):
+    self.debug(
+        "Initialize TPU profiler arguments with outdir: {}".format(outdir))
+    dir_list = outdir.split("/")
+    idx = 0
+    for i in range(len(dir_list)):
+      if dir_list[i] == "benchmarks":
+        idx = i + 1
+        break
 
+    logdir = "/".join(dir_list[idx:])
     ret = {
-        'service_addr': os.environ.get("TPU_IP_ADDRESS") + ":8466",
-        'logdir': os.environ.get("STORAGE_BUCKET") + "/" + name,
-        'duration_ms': duration,
-        'worker_list': '',
-        'num_tracing_attempts': 10,
-        'options': None
+        "service_addr":
+            "{}:{}".format(os.environ.get("TPU_IP_ADDRESS"), "8466"),
+        "logdir":
+            "{}/{}".format(os.environ.get("STORAGE_BUCKET"), logdir),
+        "duration_ms":
+            duration,
+        "worker_list":
+            '',
+        "num_tracing_attempts":
+            10,
+        "options":
+            None
     }
-
+    logging.debug(ret)
     return ret
 
   def start_monitoring(self):
-    self.proc.start()
+    success = False
+    sleep_time = 2
 
-  def stop_monitoring(self):
-    self.proc.join()
+    while not success:
+      try:
+        profiler_client.trace(**self.args)
+      except UnavailableError as e:
+        self.warning(
+            "Failed to capture TPU profile, retry in {} seconds".format(
+                sleep_time))
+        time.sleep(sleep_time)
+      else:
+        success = True
+        self.info("Successfully captured TPU profile")
 
-    # gsutil cp -r ${STORAGE_BUCKET}/cls/**.overview_page.json ./
 
+def tpu_monitor_thread(monitor):
 
-def tpu_monitor_thread(monitor, outdir):
-  # TODO: try to start the client and retry when it failed
+  # Check tensorflow installation
+  try:
+    from tensorflow.python.profiler import profiler_client
+    from tensorflow.errors import UnavailableError
+  except ImportError:
+    logging.error(
+        "Failed to start TPU monitor thread because tensorflow packages cannot be imported. Please install tensorflow first."
+    )
+    logging.info("Continue the TPU experiment without running TPU profiler.")
+    return
+
   # Check necessary env vars
   for env_var in ["TPU_NAME", "TPU_IP_ADDRESS", "STORAGE_BUCKET"]:
-    assert os.environ.get(
-        env_var
-    ) is not None, "Failed to start tpu monitor thread because {} must be defined.".format(
-        env_var)
-    logging.info("{} is {}".format(env_var, os.environ.get(env_var)))
+    if os.environ.get(env_var) is None:
+      logging.error(
+          "Failed to start TPU monitor thread because {} was not defined.".
+          format(env_var))
+      logging.info("Continue the TPU experiment without running TPU profiler.")
+      return
+    else:
+      logging.debug("{} is {}".format(env_var, os.environ.get(env_var)))
+
+  monitor.start_monitoring()
 
 
-def tpu_monitor_start(monitor, outdir):
-  # TODO: need to export outdir to env var
-  logging.debug("Start tpu monitor thread with outdir: {}".format(outdir))
+def tpu_monitor_start(monitor):
+  logging.debug("Start TPU monitoring thread")
   t = threading.Thread(
       target=tpu_monitor_thread,
       name='TPU Monitor Thread',
-      args=(monitor, outdir),
+      args=(monitor,),
   )
   t.start()
   return t
 
 
 def tpu_monitor_stop(monitor, thread):
-  logging.debug("Stop tpu monitor thread")
+  logging.debug("Stop TPU monitoring thread")
   thread.join()
+
+
+# gsutil cp -r ${STORAGE_BUCKET}/cls/**.overview_page.json ./
+
+# Sample output from profiler_client.monitor
+# for query in range(0, 100):
+#   print(profiler_client.monitor(self.args['service_addr'], self.args['duration_ms'], self.args['level']))
+# Timestamp: 13:00:11
+# TPU type: TPU v3
+# Number of TPU cores: 1 (Replica count = 1, num cores per replica = 1)
+# Per-core batch size: 32
+# TPU idle time (lower is better): 17.9%
+# Utilization of TPU Matrix Units (higher is better): 0.058%
+# Step time: 70.6ms (avg), 70.6ms (min), 70.6ms (max)
+# Infeed percentage: 0.000% (avg), 0.000% (min), 0.000% (max)

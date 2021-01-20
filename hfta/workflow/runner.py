@@ -78,9 +78,8 @@ class Runner:
         monitor_thread = dcgm_monitor_start(monitor, outdir)
 
       if enable_tpu_profiler and device == 'xla':
-        self.debug("Enabled TPU profiler - create TPU monitor now")
-        monitor = TpuMonitor("dummy name", 1000)
-        monitor_thread = tpu_monitor_start(monitor, outdir)
+        monitor = TpuMonitor(10000, outdir)
+        monitor_thread = tpu_monitor_start(monitor)
 
       try:
         succeeded = self._run_B(
@@ -96,7 +95,6 @@ class Runner:
         if enable_dcgm and device == 'cuda':
           dcgm_monitor_stop(monitor, monitor_thread)
         if enable_tpu_profiler and device == 'xla':
-          self.debug("Stop TPU monitor now")
           tpu_monitor_stop(monitor, monitor_thread)
       if not succeeded:
         self.error('B = {} failed!'.format(B))
