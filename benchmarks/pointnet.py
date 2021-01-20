@@ -92,7 +92,6 @@ def main(args):
       enable_tpu_profiler=(args.enable_tpu_profiler and args.device == "xla"),
       epochs=args.epochs,
       iters_per_epoch=args.iters_per_epoch,
-      serial_runner_kwargs=args.serial_runner_kwargs,
       concurrent_runner_kwargs=args.concurrent_runner_kwargs,
       mps_runner_kwargs=args.mps_runner_kwargs,
       hfta_runner_kwargs=args.hfta_runner_kwargs,
