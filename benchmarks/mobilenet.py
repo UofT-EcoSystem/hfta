@@ -23,7 +23,7 @@ def main(args):
         'python',
         'main.py',
         '--version',
-        args.version, 
+        args.version,
         '--dataset',
         args.dataset,
         '--dataroot',
@@ -135,13 +135,11 @@ def attach_args(parser=argparse.ArgumentParser('MobilNet Benchmark Workflow')):
       choices=['imagenet', 'cifar10'],
       help='Use imagenet or cifar10 to train MobilNet',
   )
-  parser.add_argument(
-      '--version',
-      type=str,
-      required=True,
-      choices=['v2', 'v3s', 'v3l'],
-      help='version of the MobileNet'
-  )
+  parser.add_argument('--version',
+                      type=str,
+                      required=True,
+                      choices=['v2', 'v3s', 'v3l'],
+                      help='version of the MobileNet')
   parser = attach_workflow_args(parser)
   return parser
 

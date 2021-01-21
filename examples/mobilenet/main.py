@@ -22,7 +22,7 @@ except ImportError:
 
 import sys
 from hfta.optim import (get_hfta_optim_for, get_hfta_lr_scheduler_for,
-                   consolidate_hyperparams_and_determine_B)
+                        consolidate_hyperparams_and_determine_B)
 
 from hfta.workflow import EpochTimer
 
@@ -377,14 +377,15 @@ def main(args):
           epoch, B)
     scheduler.step()
 
-    num_samples_per_epoch = train_loader.batch_size * max(B, 1) * len(train_loader)
+    num_samples_per_epoch = train_loader.batch_size * max(B,
+                                                          1) * len(train_loader)
     epoch_timer.epoch_stop(num_samples_per_epoch)
     print('Epoch {} took {} s!'.format(epoch, epoch_timer.epoch_latency(epoch)))
 
   if args.device == 'xla':
     print(met.metrics_report())
   if args.outf is not None:
-      epoch_timer.to_csv(args.outf) 
+    epoch_timer.to_csv(args.outf)
   if args.eval:
     acc_top1, acc_top5 = test(model, device, test_loader, B)
     if args.outf is not None:
