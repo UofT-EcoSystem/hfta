@@ -6,14 +6,6 @@ OUTDIR_ROOT=${3:-"benchmarks/"}
 
 _pointnet_warmup_data () {
   local task=$1
-  local use_mig=$2
-  if [ "${use_mig}" == "true" ]; then
-    nvidia-smi mig -cgi '0'
-    nvidia-smi mig -cci
-    # This depends on the output format from nvidia-smi -L, if it breaks, check if the output has changed
-    ID_STRING=$(nvidia-smi -L |  grep MIG | awk '{print $6}' | tr -d '()')
-    CUDA_VISIBLE_DEVICE=${ID_STRING[0]}
-  fi
   if [ "${task}" == "cls" ]; then
     python examples/pointnet/train_classification.py \
       --epochs 1 \
@@ -33,11 +25,6 @@ _pointnet_warmup_data () {
     echo "Unknown task: ${task} !"
     return -1
   fi
-  if [ "${use_mig}" == "true" ]; then
-    nvidia-smi mig  -dci -i 0
-    nvidia-smi mig  -dgi -i 0
-    unset CUDA_VISIBLE_DEVICE
-  fi
 }
 
 _workflow_pointnet () {
@@ -45,7 +32,7 @@ _workflow_pointnet () {
   local repeats=$2
   local use_mig=${3:-"false"}
 
-  _pointnet_warmup_data ${task} ${use_mig}
+  _pointnet_warmup_data ${task}
 
   if [ "${task}" == "cls" ]; then
     local epochs=5
