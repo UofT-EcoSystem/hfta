@@ -4,17 +4,60 @@ DEVICE=${1:-"cuda"}
 DEVICE_MODEL=${2:-"v100"}
 OUTDIR_ROOT=${3:-"benchmarks/"}
 
+_pointnet_warmup_data () {
+  local task=$1
+  if [ "${task}" == "cls" ]; then
+    python examples/pointnet/train_classification.py \
+      --epochs 1 \
+      --iters-per-epoch 1000 \
+      --dataset datasets/shapenetcore_partanno_segmentation_benchmark_v0/ \
+      --eval \
+      --device cpu \
+      --warmup-data-loading
+  elif [ "${task}" == "seg" ]; then
+    python examples/pointnet/train_segmentation.py \
+      --epochs 1 \
+      --iters-per-epoch 1000 \
+      --dataset datasets/shapenetcore_partanno_segmentation_benchmark_v0/ \
+      --device cpu \
+      --warmup-data-loading
+  else
+    echo "Unknown task: ${task} !"
+    return -1
+  fi
+}
+
 _workflow_pointnet () {
   local task=$1
   local repeats=$2
+  local use_mig=${3:-"false"}
+
+  _pointnet_warmup_data ${task}
+
   if [ "${task}" == "cls" ]; then
     local epochs=5
-    prepare_pointnet_cls
   elif [ "${task}" == "seg" ]; then
     local epochs=10
-    prepare_pointnet_seg
   else
     echo "Unknown task: ${task} !"
+    return -1
+  fi
+
+  if [ "${use_mig}" == "true" ]; then
+    local modes_flag="--modes mig"
+  elif [ "${use_mig}" == "false" ]; then
+    if [ "${DEVICE}" == "cuda" ]; then
+      local modes_flag="--modes serial concurrent mps hfta"
+    elif [ "${DEVICE}" == "xla" ]; then
+      local modes_flag="--modes serial hfta"
+    elif [ "${DEVICE}" == "cpu" ]; then
+      local modes_flag="--modes serial concurrent hfta"
+    else
+      echo "Unknown device: ${DEVICE} !"
+      return -1
+    fi
+  else
+    echo "Unknown use_mig: ${use_mig} !"
     return -1
   fi
 
@@ -26,6 +69,7 @@ _workflow_pointnet () {
       --iters-per-epoch 1000 \
       --dataroot datasets/shapenetcore_partanno_segmentation_benchmark_v0/ \
       --task ${task} \
+      ${modes_flag} \
       --device ${DEVICE} \
       --device-model ${DEVICE_MODEL}
   done
@@ -60,7 +104,7 @@ _plot_dcgm_pointnet() {
     --plot
 }
 
-plot_dcgm_dcgan() {
+_plot_dcgm_dcgan() {
   local outdirs=()
   for outdir in ${OUTDIR_ROOT}/dcgan/run*/
   do
@@ -73,7 +117,7 @@ plot_dcgm_dcgan() {
     --plot
 }
 
-plot_speedups_dcgan() {
+_plot_speedups_dcgan() {
   local outdirs=()
   for outdir in ${OUTDIR_ROOT}/dcgan/run*/
   do
@@ -87,26 +131,89 @@ plot_speedups_dcgan() {
     --plot
 }
 
+_dcgan_warmup_data() {
+  local dataroot=${1:-"datasets/lsun/"}
+  md5sum ${dataroot}/bedroom_train_lmdb/data.mdb > /dev/null
+  md5sum ${dataroot}/bedroom_train_lmdb/lock.mdb > /dev/null
+}
+
 workflow_dcgan () {
   local repeats=${1:-"3"}
   local epochs=5
+  local dataroot="datasets/lsun/"
 
+  _dcgan_warmup_data ${dataroot}
   local i
   for ((i=0; i<${repeats}; i++)); do
-    python3.6 benchmarks/dcgan.py \
+    python benchmarks/dcgan.py \
       --outdir_root ${OUTDIR_ROOT}/dcgan/run${i}/ \
       --epochs ${epochs} \
-      --iters-per-epoch 500 \
-      --dataroot ../datasets/lsun_small/ \
+      --iters-per-epoch 300 \
+      --modes serial hfta \
+      --dataroot ${dataroot} \
+      --device ${DEVICE} \
+      --device-model ${DEVICE_MODEL}
+  done
+
+  if [ "${DEVICE}" != "cuda" ]; then
+    return
+  fi
+
+  local precs=("fp32" "amp")
+  local modes=("mps" "concurrent")
+  for ((i=0; i<${repeats}; i++)); do
+    for mode in ${modes[@]}; do
+      for prec in ${precs[@]}; do
+        echo "${mode}" "${prec}"
+        _dcgan_warmup_data ${dataroot}
+        python benchmarks/dcgan.py \
+          --outdir_root ${OUTDIR_ROOT}/dcgan/run${i}/ \
+          --epochs ${epochs} \
+          --iters-per-epoch 300 \
+          --modes ${mode} \
+          --prec ${prec} \
+          --dataroot ${dataroot} \
+          --device ${DEVICE} \
+          --device-model ${DEVICE_MODEL}
+      done
+    done
+  done
+}
+
+workflow_dcgan_mig () {
+  local repeats=${1:-"3"}
+  local epochs=5
+  local dataroot="datasets/lsun/"
+
+  _dcgan_warmup_data ${dataroot}
+  local i
+  for ((i=0; i<${repeats}; i++)); do
+    python benchmarks/dcgan.py \
+      --outdir_root ${OUTDIR_ROOT}/dcgan/run${i}/ \
+      --epochs ${epochs} \
+      --iters-per-epoch 300 \
+      --modes mig \
+      --dataroot ${dataroot} \
       --device ${DEVICE} \
       --device-model ${DEVICE_MODEL}
   done
 }
 
+plot_dcgan () {
+  _plot_speedups_dcgan
+  if [ "${DEVICE}" == "cuda" ]; then
+    _plot_dcgm_dcgan
+  fi
+}
 
 workflow_pointnet_cls () {
   local repeats=${1:-"3"}
   _workflow_pointnet cls ${repeats}
+}
+
+workflow_pointnet_cls_mig () {
+  local repeats=${1:-"3"}
+  _workflow_pointnet cls ${repeats} true
 }
 
 plot_pointnet_cls () {
@@ -119,6 +226,11 @@ plot_pointnet_cls () {
 workflow_pointnet_seg () {
   local repeats=${1:-"3"}
   _workflow_pointnet seg ${repeats}
+}
+
+workflow_pointnet_seg_mig () {
+  local repeats=${1:-"3"}
+  _workflow_pointnet seg ${repeats} true
 }
 
 plot_pointnet_seg () {

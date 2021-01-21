@@ -3,27 +3,35 @@ import random
 from hfta.workflow.plan import find_max_B, expovariate_plan
 
 
-def testcase_find_max_B(expected_max_B, dry_run_repeats, B_limit, unstable_prob):
+def testcase_find_max_B(max_B, dry_run_repeats, B_limit, unstable_prob):
 
   def try_B(B):
+    if B_limit is not None:
+      assert B <= B_limit
     if random.random() > unstable_prob:
-      return B <= expected_max_B
+      return B <= max_B
     else:
-      return B <= random.randint(expected_max_B + 1, 2 * expected_max_B)
+      return B <= random.randint(max_B + 1, 2 * max_B)
 
-  actual_max_B = find_max_B(try_B, dry_run_repeats=dry_run_repeats, B_limit=B_limit)
-  assert actual_max_B == min(expected_max_B, B_limit)
+  actual_max_B = find_max_B(try_B,
+                            dry_run_repeats=dry_run_repeats,
+                            B_limit=B_limit)
+  expected_max_B = min(max_B, B_limit) if B_limit is not None else max_B
+  assert actual_max_B == expected_max_B
 
 
 def test_find_max_B():
   print('test_find_max_B:')
   print('==================================')
   print('functional testing ...')
-  for _ in range(20):
-    expected_max_B = random.randint(1, 500)
-    B_limit = random.randint(1, 500)
-    print('  testcase_find_max_B({}, {}, 1, -1.0)...'.format(expected_max_B, B_limit))
-    testcase_find_max_B(expected_max_B, 1, B_limit, -1.0)
+  B_limits = [random.randint(1, 500) for _ in range(10)] + ([None] * 10)
+  for B_limit in B_limits:
+    max_B = random.randint(1, 500)
+    print('  testcase_find_max_B({}, {}, 1, -1.0)...'.format(max_B, B_limit))
+    testcase_find_max_B(max_B, 1, B_limit, -1.0)
+
+  print('  testcase_find_max_B(1, 1, None, -1.0)...')
+  testcase_find_max_B(1, 1, None, -1.0)
   print('  testcase_find_max_B(1, 1, 1, -1.0)...')
   testcase_find_max_B(1, 1, 1, -1.0)
 
@@ -41,15 +49,15 @@ def test_find_max_B():
   except RuntimeError as e:
     assert str(e) == "B_limit should be greater than 0!"
 
-  def error_rate(unstable_prob, dry_run_repeats, B_limit=None):
+  def error_rate(unstable_prob, dry_run_repeats):
     total = 1000
     error = 0
     for _ in range(total):
       try:
         testcase_find_max_B(
             random.randint(1, 500),
-            random.randint(1, 500) if B_limit == None else B_limit,
             dry_run_repeats,
+            None,
             unstable_prob,
         )
       except AssertionError:
@@ -59,11 +67,9 @@ def test_find_max_B():
   for unstable_prob in [0.1, 0.3, 0.5, 0.7, 0.9]:
     print('stabiility testing for unstable_prob = {}...'.format(unstable_prob))
     for dry_run_repeats in [1, 3, 5, 10, 20]:
-      for B_limit in [None, 100, 300, 500]:
-        print('  B_limit={}, dry_run_repeats = {}, error_rate = {}'.format(
-            B_limit,
+      print('  dry_run_repeats = {}, error_rate = {}'.format(
           dry_run_repeats,
-            error_rate(unstable_prob, dry_run_repeats, B_limit),
+          error_rate(unstable_prob, dry_run_repeats),
       ))
 
 
