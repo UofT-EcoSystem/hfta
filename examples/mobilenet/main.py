@@ -383,8 +383,8 @@ def main(args):
 
   if args.device == 'xla':
     print(met.metrics_report())
-
-
+  if args.outf is not None:
+      epoch_timer.to_csv(args.outf) 
   if args.eval:
     acc_top1, acc_top5 = test(model, device, test_loader, B)
     if args.outf is not None:
