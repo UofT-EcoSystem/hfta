@@ -27,7 +27,8 @@ setup(
     entry_points={
         'console_scripts': [
             'timing_parser=hfta.workflow.timing:timing_parser_main',
-            'dcgm_parser=hfta.workflow.dcgm_monitor:dcgm_parser_main'
+            'dcgm_parser=hfta.workflow.dcgm_monitor:dcgm_parser_main',
+            'tpu_profile_parser=hfta.workflow.tpu_monitor:tpu_profile_parser_main'
         ],
     },
     python_requires='>=3.6',
@@ -35,4 +36,7 @@ setup(
         'pandas>=1.1.5', 'numpy', 'scipy', 'matplotlib', 'psutil',
         'torch>=1.6.0', 'hyperopt'
     ],
+    extras_require={
+        'xla': ['plyfile', 'tensorflow'],
+    },
 )
