@@ -31,10 +31,12 @@ class TpuMonitor:
   def error(self, msg):
     logging.error(self.logging_format(msg))
 
-  def __init__(self, duration, outdir):
-    self.info("Start TPU Monitor and monitor for {} seconds.".format(duration /
-                                                                     1000))
+  def __init__(self, wait_time, duration, outdir):
+    self.info(
+        "Start TPU Monitor and it will monitor for {} seconds after waiting for {} seconds."
+        .format(duration / 1000, wait_time))
     self.args = self.get_profiler_args(duration, outdir)
+    self.wait_time = wait_time
 
   def get_profiler_args(self, duration, outdir):
     self.debug(
@@ -67,6 +69,9 @@ class TpuMonitor:
   def start_monitoring(self):
     success = False
     sleep_time = 2
+
+    # Sleep for wait_time seconds to avoid the training warmup
+    time.sleep(self.wait_time)
 
     while not success:
       try:
@@ -137,3 +142,7 @@ def tpu_monitor_stop(monitor, thread):
 # Utilization of TPU Matrix Units (higher is better): 0.058%
 # Step time: 70.6ms (avg), 70.6ms (min), 70.6ms (max)
 # Infeed percentage: 0.000% (avg), 0.000% (min), 0.000% (max)
+
+
+def tpu_profile_parser_main():
+  pass

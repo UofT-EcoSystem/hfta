@@ -78,7 +78,7 @@ class Runner:
         monitor_thread = dcgm_monitor_start(monitor, outdir)
 
       if enable_tpu_profiler and device == 'xla':
-        monitor = TpuMonitor(10000, outdir)
+        monitor = TpuMonitor(wait_time=10, duration=10000, outdir=outdir)
         monitor_thread = tpu_monitor_start(monitor)
 
       try:

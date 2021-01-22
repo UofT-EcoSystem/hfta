@@ -70,15 +70,12 @@ def workflow(
       'precs': precs,
       'outdir_prefix': outdir_prefix,
       'enable_dcgm': enable_dcgm,
+      'enable_tpu_profiler': enable_tpu_profiler,
       'epochs': epochs,
       'iters_per_epoch': iters_per_epoch,
   }
 
   for runner in runners:
-    if isinstance(runner, SerialRunner) or isinstance(runner, HFTARunner):
-      run_kwargs['enable_tpu_profiler'] = enable_tpu_profiler
-    else:
-      run_kwargs['enable_tpu_profiler'] = False
     runner.info('Starting with run_kwargs = {}'.format(run_kwargs))
     succeeded = runner.run(**run_kwargs)
     if not succeeded:
