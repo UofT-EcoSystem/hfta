@@ -27,7 +27,7 @@ from hfta.optim import (get_hfta_optim_for, get_hfta_lr_scheduler_for,
 from hfta.workflow import EpochTimer
 
 
-def attach_args(parser=argparse.ArgumentParser(description='Resnet18 Example')):
+def attach_args(parser=argparse.ArgumentParser(description='MobileNet V2 and V3 Example')):
   # Training settings
   parser.add_argument(
       '--version',
@@ -51,7 +51,7 @@ def attach_args(parser=argparse.ArgumentParser(description='Resnet18 Example')):
   parser.add_argument(
       '--iters-per-epoch',
       type=int,
-      default=10000,
+      default=float('inf'),
       help='number of epochs to train for',
   )
   parser.add_argument(
@@ -118,7 +118,7 @@ def attach_args(parser=argparse.ArgumentParser(description='Resnet18 Example')):
   parser.add_argument(
       '--dataroot',
       type=str,
-      default='../data',
+      default='../../datasets/cifar10',
       help='folder that stores input dataset',
   )
   parser.add_argument(
@@ -151,6 +151,13 @@ def attach_args(parser=argparse.ArgumentParser(description='Resnet18 Example')):
       default=False,
       action='store_true',
       help='run the evaluation loop',
+  )
+  parser.add_argument(
+      '--warmup-data-loading',
+      default=False,
+      action='store_true',
+      help='go over the training and validation loops without performing '
+      'forward and backward passes',
   )
   return parser
 
@@ -255,9 +262,12 @@ def _loss_fn(criterion, outputs, labels, B, batch_size):
 def train(args, model, criterion, optimizer, scaler, device, train_loader,
           epoch, B):
   model.train()
+  num_samples_done = 0
   for batch_idx, (inputs, labels) in enumerate(train_loader):
     if batch_idx >= args.iters_per_epoch:
       break
+    if args.warmup_data_loading:
+      continue
 
     optimizer.zero_grad()
 
@@ -291,8 +301,12 @@ def train(args, model, criterion, optimizer, scaler, device, train_loader,
     if scaler is not None:
       scaler.update()
 
+    num_samples_done += batch_size
 
-def test(model, device, test_loader, B):
+  return num_samples_done
+
+
+def test(args, model, device, test_loader, B):
   print('Running validation loop ...')
   model.eval()
   with torch.no_grad():
@@ -300,6 +314,8 @@ def test(model, device, test_loader, B):
     total_correct_5 = torch.zeros(max(B, 1), device=device)
     total_samples = 0
     for inputs, labels in test_loader:
+      if args.warmup_data_loading:
+        continue
       inputs, labels = inputs.to(device), labels.to(device)
       batch_size = inputs.size(0)
       if B > 0:
@@ -373,21 +389,21 @@ def main(args):
 
   for epoch in range(args.epochs):
     epoch_timer.epoch_start(epoch)
-    train(args, model, criterion, optimizer, scaler, device, train_loader,
-          epoch, B)
+    num_samples_done = train(args, model, criterion, optimizer, scaler,
+                             device, train_loader, epoch, B)
     scheduler.step()
 
-    num_samples_per_epoch = train_loader.batch_size * max(B,
-                                                          1) * len(train_loader)
-    epoch_timer.epoch_stop(num_samples_per_epoch)
+    epoch_timer.epoch_stop(num_samples_done)
     print('Epoch {} took {} s!'.format(epoch, epoch_timer.epoch_latency(epoch)))
 
   if args.device == 'xla':
     print(met.metrics_report())
+
   if args.outf is not None:
     epoch_timer.to_csv(args.outf)
+
   if args.eval:
-    acc_top1, acc_top5 = test(model, device, test_loader, B)
+    acc_top1, acc_top5 = test(args, model, device, test_loader, B)
     if args.outf is not None:
       pd.DataFrame({
           'acc:top1': acc_top1,
