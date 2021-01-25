@@ -138,25 +138,6 @@ def tpu_monitor_stop(monitor, thread):
   thread.join()
 
 
-# gsutil cp -r ${STORAGE_BUCKET}/cls/**.overview_page.json ./
-
-# Namespace(
-#     device='cuda',
-#     device_model='v3',
-#     filename='dcgm_metrics.csv',
-#     modes=['serial', 'concurrent', 'mps', 'hfta'],
-#     outdirs=[
-#         '/home/yuxuan950427/repo/HFTA-internal/MLSys21/benchmarks/pointnet/run1/cls'
-#         '/home/yuxuan950427/repo/HFTA-internal/MLSys21/benchmarks/pointnet/run2/cls'
-#         '/home/yuxuan950427/repo/HFTA-internal/MLSys21/benchmarks/pointnet/run3/cls'
-#     ],
-#     plot=True,
-#     precs=['fp32', 'amp'],
-#     savedir='../MLSys21/benchmarks/pointnet/dcgm-cls-xla-v3/')
-
-# gs://fusion-profiling/pointnet/run1/cls/xla/v3/bf16/hfta/B1/ gs://fusion-profiling/pointnet/run1/cls/xla/v3/bf16/hfta/B10/ gs://fusion-profiling/pointnet/run1/cls/xla/v3/bf16/hfta/B11/ gs://fusion-profiling/pointnet/run1/cls/xla/v3/bf16/hfta/B2/ gs://fusion-profiling/pointnet/run1/cls/xla/v3/bf16/hfta/B3/ gs://fusion-profiling/pointnet/run1/cls/xla/v3/bf16/hfta/B4/ gs://fusion-profiling/pointnet/run1/cls/xla/v3/bf16/hfta/B5/ gs://fusion-profiling/pointnet/run1/cls/xla/v3/bf16/hfta/B6/ gs://fusion-profiling/pointnet/run1/cls/xla/v3/bf16/hfta/B7/
-
-
 def _attach_args(
     parser=argparse.ArgumentParser(description='TPU Metric Parser')):
   parser.add_argument(
@@ -300,19 +281,17 @@ def _get_hardware_sharing_metrics(
     for outdir_idx, outdir in enumerate(outdirs):
       Bs = []
       metrics_of_Bs = []
-      mode_outdir_path = os.path.join(outdir, 'xla', device_model, prec, mode)
 
+      mode_outdir_path = os.path.join(outdir, 'xla', device_model, prec, mode)
       B_subdir = [
           path.split("/")[-2] for path in run_command(
               "gsutil ls -d {}/B*".format(mode_outdir_path)).split()
       ]
 
       for B_exp in B_subdir:
-        logging.info("Checking B_exp {}".format(B_exp))
         B = int(B_exp[1:])
         Bs.append(B)
         B_outdir_path = os.path.join(mode_outdir_path, B_exp)
-
         profile_file = run_command(
             "gsutil ls {}/**.overview_page.json".format(B_outdir_path))
         data = json.loads(run_command("gsutil cat {}".format(profile_file)))
@@ -401,14 +380,14 @@ def _get_tpu_profile_fields_enabled_for():
 
 def tpu_profile_parser_main():
   args = _parse_args(_attach_args())
+  print(args)
+
   pathlib.Path(args.savedir).mkdir(parents=True, exist_ok=True)
   summary = {}
   fields = _get_tpu_profile_fields_enabled_for()
 
-  print(args)
-
   for field in fields:
-    logging.info("Searching field {}".format(field))
+    print("Searching field {}".format(field))
     summary[field] = {}
     for mode in args.modes:
       if mode == 'serial':
