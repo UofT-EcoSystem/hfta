@@ -163,8 +163,9 @@ def _attach_args(
       '--outdirs',
       type=str,
       required=True,
-      help=
-      'a string containing paths (space-delimited) to the profile location for multiple runs',
+      default=[],
+      nargs='+',
+      help='path(s) to the profile location for multiple runs',
   )
   parser.add_argument(
       '--device-model',
@@ -208,8 +209,6 @@ def _attach_args(
 def _parse_args(parser):
   args = parser.parse_args()
   args.device_model = args.device_model.lower()
-  # Parse the outdirs string to a list
-  args.outdirs = [outdir for outdir in args.outdirs.split()]
   args.device = 'xla'
   if args.precs is None:
     args.precs = _init_precs(args.device, args.device_model)
@@ -309,6 +308,7 @@ def _get_hardware_sharing_metrics(
       ]
 
       for B_exp in B_subdir:
+        logging.info("Checking B_exp {}".format(B_exp))
         B = int(B_exp[1:])
         Bs.append(B)
         B_outdir_path = os.path.join(mode_outdir_path, B_exp)
@@ -408,6 +408,7 @@ def tpu_profile_parser_main():
   print(args)
 
   for field in fields:
+    logging.info("Searching field {}".format(field))
     summary[field] = {}
     for mode in args.modes:
       if mode == 'serial':

@@ -107,8 +107,9 @@ _plot_dcgm_pointnet() {
 _plot_tpu_profile_pointnet() {
   local task=$1
   local all_outdirs="$(gsutil ls -d ${STORAGE_BUCKET}/pointnet/run*/${task})"
+  local outdir_arr=($all_outdirs)
   tpu_profile_parser \
-    --outdirs ${all_outdirs} \
+    --outdirs ${outdir_arr[@]} \
     --savedir ${OUTDIR_ROOT}/pointnet/tpuprofile-${task}-${DEVICE}-${DEVICE_MODEL}/ \
     --plot
 }
