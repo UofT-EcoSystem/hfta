@@ -14,6 +14,8 @@ def workflow(
     modes=None,
     enable_dcgm=True,
     enable_tpu_profiler=True,
+    tpu_profiler_waittime=10,
+    tpu_profiler_duration=10,
     epochs=10,
     iters_per_epoch=MAX_ITERS_PER_EPOCH,
     concurrent_runner_kwargs=None,
@@ -71,6 +73,8 @@ def workflow(
       'outdir_prefix': outdir_prefix,
       'enable_dcgm': enable_dcgm,
       'enable_tpu_profiler': enable_tpu_profiler,
+      'tpu_profiler_waittime': tpu_profiler_waittime,
+      'tpu_profiler_duration': tpu_profiler_duration,
       'epochs': epochs,
       'iters_per_epoch': iters_per_epoch,
   }

@@ -65,6 +65,8 @@ class Runner:
       outdir_prefix=None,
       enable_dcgm=None,
       enable_tpu_profiler=None,
+      tpu_profiler_waittime=10,
+      tpu_profiler_duration=10,
       epochs=10,
       iters_per_epoch=MAX_ITERS_PER_EPOCH,
   ):
@@ -78,7 +80,9 @@ class Runner:
         monitor_thread = dcgm_monitor_start(monitor, outdir)
 
       if enable_tpu_profiler and device == 'xla':
-        monitor = TpuMonitor(wait_time=10, duration=10000, outdir=outdir)
+        monitor = TpuMonitor(wait_time=tpu_profiler_waittime,
+                             duration=tpu_profiler_duration,
+                             outdir=outdir)
         monitor_thread = tpu_monitor_start(monitor)
 
       try:
@@ -111,6 +115,8 @@ class Runner:
       outdir_prefix=None,
       enable_dcgm=True,
       enable_tpu_profiler=True,
+      tpu_profiler_waittime=10,
+      tpu_profiler_duration=10,
       epochs=10,
       iters_per_epoch=MAX_ITERS_PER_EPOCH,
   ):
@@ -135,6 +141,8 @@ class Runner:
           ),
           enable_dcgm=enable_dcgm,
           enable_tpu_profiler=enable_tpu_profiler,
+          tpu_profiler_waittime=tpu_profiler_waittime,
+          tpu_profiler_duration=tpu_profiler_duration,
           epochs=epochs,
           iters_per_epoch=iters_per_epoch,
       )

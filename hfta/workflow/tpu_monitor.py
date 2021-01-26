@@ -43,7 +43,7 @@ class TpuMonitor:
   def __init__(self, wait_time, duration, outdir):
     self.info(
         "Start TPU Monitor and it will monitor for {} seconds after waiting for {} seconds."
-        .format(duration / 1000, wait_time))
+        .format(duration, wait_time))
     self.args = self.get_profiler_args(duration, outdir)
     self.wait_time = wait_time
 
@@ -63,8 +63,7 @@ class TpuMonitor:
             "{}:{}".format(os.environ.get("TPU_IP_ADDRESS"), "8466"),
         "logdir":
             "{}/{}".format(os.environ.get("STORAGE_BUCKET"), logdir),
-        "duration_ms":
-            duration,
+        "duration_ms": (duration * 1000),
         "worker_list":
             '',
         "num_tracing_attempts":
