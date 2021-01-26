@@ -14,8 +14,8 @@ def workflow(
     modes=None,
     enable_dcgm=True,
     enable_tpu_profiler=True,
-    tpu_profiler_waittime=10,
-    tpu_profiler_duration=10,
+    tpu_profiler_waittime=10.0,
+    tpu_profiler_duration=10.0,
     epochs=10,
     iters_per_epoch=MAX_ITERS_PER_EPOCH,
     concurrent_runner_kwargs=None,
@@ -33,6 +33,8 @@ def workflow(
   assert modes is None or isinstance(modes, (list, tuple))
   assert isinstance(enable_dcgm, bool)
   assert isinstance(enable_tpu_profiler, bool)
+  assert isinstance(tpu_profiler_waittime, float)
+  assert isinstance(tpu_profiler_duration, float)
   assert isinstance(epochs, int)
   assert isinstance(iters_per_epoch, int)
 
