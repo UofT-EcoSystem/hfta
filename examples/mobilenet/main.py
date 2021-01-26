@@ -263,6 +263,7 @@ def train(args, model, criterion, optimizer, scaler, device, train_loader,
           epoch, B):
   model.train()
   num_samples_done = 0
+  B_real = min(B, 1)
   for batch_idx, (inputs, labels) in enumerate(train_loader):
     if batch_idx >= args.iters_per_epoch:
       break
@@ -301,7 +302,7 @@ def train(args, model, criterion, optimizer, scaler, device, train_loader,
     if scaler is not None:
       scaler.update()
 
-    num_samples_done += batch_size
+    num_samples_done += batch_size * B_real
 
   return num_samples_done
 

@@ -81,9 +81,9 @@ workflow_mobilenet_imangenet_v2() {
   _workflow_mobilenet imagenet v2 ${repeats}
 }
 
-workflow_mobilenet_imangenet_v3() {
+workflow_mobilenet_imangenet_v3s() {
   local repeats=${1:-"3"}
-  _workflow_mobilenet imagenet v3 ${repeats}
+  _workflow_mobilenet imagenet v3s ${repeats}
 }
 
 workflow_mobilenet_imangenet_v3l() {
@@ -96,9 +96,9 @@ workflow_mobilenet_cifar10_v2() {
   _workflow_mobilenet cifar10 v2 ${repeats}
 }
 
-workflow_mobilenet_cifar10_v3() {
+workflow_mobilenet_cifar10_v3s() {
   local repeats=${1:-"3"}
-  _workflow_mobilenet cifar10 v3 ${repeats}
+  _workflow_mobilenet cifar10 v3s ${repeats}
 }
 
 workflow_mobilenet_cifar10_v3l() {
@@ -113,10 +113,10 @@ plot_mobilenet_imagenet_v2() {
   fi
 }
 
-plot_mobilenet_imagenet_v3() {
-  _plot_speedups_mobilenet imagenet v3
+plot_mobilenet_imagenet_v3s() {
+  _plot_speedups_mobilenet imagenet v3s
   if [ "${DEVICE}" == "cuda" ]; then
-    _plot_dcgm_mobilenet imagenet v3
+    _plot_dcgm_mobilenet imagenet v3s
   fi
 }
 
@@ -135,10 +135,10 @@ plot_mobilenet_cifar10_v2() {
   fi
 }
 
-plot_mobilenet_cifar10_v3() {
-  _plot_speedups_mobilenet cifar10 v3
+plot_mobilenet_cifar10_v3s() {
+  _plot_speedups_mobilenet cifar10 v3s
   if [ "${DEVICE}" == "cuda" ]; then
-    _plot_dcgm_mobilenet cifar10 v3
+    _plot_dcgm_mobilenet cifar10 v3s
   fi
 }
 
