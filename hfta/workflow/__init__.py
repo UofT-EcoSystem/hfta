@@ -33,8 +33,8 @@ def workflow(
   assert modes is None or isinstance(modes, (list, tuple))
   assert isinstance(enable_dcgm, bool)
   assert isinstance(enable_tpu_profiler, bool)
-  assert isinstance(tpu_profiler_waittime, float)
-  assert isinstance(tpu_profiler_duration, float)
+  assert isinstance(tpu_profiler_waittime, (int, float))
+  assert isinstance(tpu_profiler_duration, (int, float))
   assert isinstance(epochs, int)
   assert isinstance(iters_per_epoch, int)
 
