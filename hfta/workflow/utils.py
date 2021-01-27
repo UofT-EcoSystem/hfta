@@ -81,6 +81,12 @@ def attach_args(parser=argparse.ArgumentParser()):
       help='start DCGM to monitor hardware performance counters',
   )
   parser.add_argument(
+      '--enable-tpu-profiler',
+      default=True,
+      action='store_true',
+      help='use TPU profiler to monitor TPU performance counters',
+  )
+  parser.add_argument(
       '--disable-dcgm',
       dest='enable-dcgm',
       action='store_false',
