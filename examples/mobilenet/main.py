@@ -39,8 +39,8 @@ def attach_args(parser=argparse.ArgumentParser(description='MobileNet V2 and V3 
   parser.add_argument(
       '--batch-size',
       type=int,
-      default=256,
-      help='input batch size for training (default: 256)',
+      default=1024,
+      help='input batch size for training (default: 1024)',
   )
   parser.add_argument(
       '--epochs',

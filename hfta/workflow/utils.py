@@ -3,23 +3,17 @@ import logging
 import subprocess
 
 
-def run_command(cmd, input=None, ignore_err=False):
+def run_command(cmd, input=None):
   """
   Run the given cmd and handle the status
   cmd is a string showing the command to run
   """
-  try:
-    stdout = subprocess.check_output(
-        cmd.split(),
-        universal_newlines=True,
-        input=input,
-    )
-    return stdout
-  except subprocess.CalledProcessError as er:
-    if not ignore_err:
-      raise
-    else:
-        return "stdout: {}\nstderr: {}".format(er.stdout, er.stderr)
+  stdout = subprocess.check_output(
+      cmd.split(),
+      universal_newlines=True,
+      input=input,
+  )
+  return stdout
 
 
 def _init_precs(device, device_model):

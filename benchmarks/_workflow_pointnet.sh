@@ -135,6 +135,3 @@ plot_pointnet_seg () {
   fi
 }
 
-
-
-

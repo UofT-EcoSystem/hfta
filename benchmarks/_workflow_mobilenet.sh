@@ -4,14 +4,13 @@ _mobilenet_warmup_data() {
   local dataset=$1
   local version=$2
 
-  # warm up only required for imagenet
   if [ "${dataset}" == "imagenet" ] || [ "${dataset}" == "cifar10" ]; then
     python examples/mobilenet/main.py \
       --dataset ${dataset}\
-      --version ${version} \
       --epochs 1 \
       --dataroot ./datasets/${dataset} \
       --eval \
+      --cpu \
       --warmup-data-loading
   else
     echo "Unknown dataset"
@@ -22,12 +21,13 @@ _mobilenet_warmup_data() {
 
 _workflow_mobilenet() {
   local dataset=${1:-"cifar10"} # cifar10 or imagenet
-  local version=${2:-"v2"} # v2 v3s or v3l
-  local repeats=${3:-"3"}
+  local version=${2:-"v3s"} # v2, v3s or v3l
+  local epochs=${3:-"10"}
+  local batch_size=${4:-"1024"}
+  local repeats=${5:-"3"}
 
   _mobilenet_warmup_data ${dataset} ${version}
 
-  local epochs=5
   local i
   for ((i=0; i<${repeats}; i++)); do
     python benchmarks/mobilenet.py \
@@ -54,7 +54,7 @@ _plot_speedups_mobilenet() {
     --outdirs "${outdirs[@]}" \
     --device ${DEVICE}\
     --device-model ${DEVICE_MODEL} \
-    --save ${OUTDIR_ROOT}/mobilenet/${DEVICE}-${DEVICE_MODEL} \
+    --save ${OUTDIR_ROOT}/mobilenet/${DEVICE}-${DEVICE_MODEL}/${dataset}/${version} \
     --plot
 }
 
@@ -69,18 +69,18 @@ _plot_dcgm_mobilenet() {
   dcgm_parser \
     --outdirs "${outdirs[@]}" \
     --device-model ${DEVICE_MODEL} \
-    --savedir ${OUTDIR_ROOT}/mobilenet/dcgm-${DEVICE}-${DEVICE_MODEL}/ \
+    --savedir ${OUTDIR_ROOT}/mobilenet/dcgm-${DEVICE}-${DEVICE_MODEL}/${dataset}/${version}/ \
     --plot
 }
 
 workflow_mobilenet_cifar10_v3s() {
   local repeats=${1:-"3"}
-  _workflow_mobilenet cifar10 v3s ${repeats}
+  _workflow_mobilenet cifar10 v3s 20 1024 ${repeats}
 }
 
 workflow_mobilenet_cifar10_v3l() {
   local repeats=${1:-"3"}
-  _workflow_mobilenet cifar10 v3l ${repeats}
+  _workflow_mobilenet cifar10 v3l 20 1024 ${repeats}
 }
 
 
@@ -97,3 +97,4 @@ plot_mobilenet_cifar10_v3l() {
     _plot_dcgm_mobilenet cifar10 v3l
   fi
 }
+
