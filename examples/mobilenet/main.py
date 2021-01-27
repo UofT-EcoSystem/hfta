@@ -32,15 +32,15 @@ def attach_args(parser=argparse.ArgumentParser(description='MobileNet V2 and V3 
   parser.add_argument(
       '--version',
       type=str,
-      default='v2',
+      default='v3s',
       choices=['v2', 'v3s', 'v3l'],
-      help='version of the MobileNet (default: v2)',
+      help='version of the MobileNet (default: v3s)',
   )
   parser.add_argument(
       '--batch-size',
       type=int,
       default=256,
-      help='input batch size for training (default: 64)',
+      help='input batch size for training (default: 256)',
   )
   parser.add_argument(
       '--epochs',

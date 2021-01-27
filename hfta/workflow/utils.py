@@ -8,7 +8,7 @@ def run_command(cmd, input=None, ignore_err=False):
   Run the given cmd and handle the status
   cmd is a string showing the command to run
   """
-  try: 
+  try:
     stdout = subprocess.check_output(
         cmd.split(),
         universal_newlines=True,
@@ -129,21 +129,6 @@ def attach_args(parser=argparse.ArgumentParser()):
 
   return parser
 
-def _init_mig_devs_for_a100_exp():
-  mgi_query_str = "nvidia-smi  --query-gpu=mig.mode.current --format=csv,noheader"
-  mig_query_res = run_command(mgi_query_str)
-  if "Enabled" not in mig_query_res:
-    raise RuntimeError(
-        "Mig is not enabled, please run \"{} nvidia-smi  -mig 1\" and reboot the machine to enable it"
-        .format(self.sudo))
-  destroy_mig_dev = ["nvidia-smi mig -dci -i 0",  "nvidia-smi mig -dgi -i 0 "]
-  create_mig_default_dev = ["nvidia-smi mig -cgi 0 -i 0", "nvidia-smi mig -cci -i 0"] 
-  
-  for cmd in destroy_mig_dev:
-    run_command(cmd, ignore_err=True)
-  
-  for cmd in create_mig_default_dev:
-    run_command(cmd)
 
 def rearrange_runner_kwargs(args):
   for mode in ['concurrent', 'mps', 'hfta', 'mig']:

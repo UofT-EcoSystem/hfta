@@ -5,17 +5,14 @@ _mobilenet_warmup_data() {
   local version=$2
 
   # warm up only required for imagenet
-  if [ "${dataset}" == "imagenet" ]; then
+  if [ "${dataset}" == "imagenet" ] || [ "${dataset}" == "cifar10" ]; then
     python examples/mobilenet/main.py \
-      --dataset imagenet\
+      --dataset ${dataset}\
       --version ${version} \
       --epochs 1 \
-      --dataroot ./datasets/imagenet \
+      --dataroot ./datasets/${dataset} \
       --eval \
       --warmup-data-loading
-  elif [ "${dataset}" == "cifar10" ]; then
-    echo "dataset ${dataset} skipped for warmup"
-    return 0
   else
     echo "Unknown dataset"
     return -1
@@ -76,26 +73,6 @@ _plot_dcgm_mobilenet() {
     --plot
 }
 
-workflow_mobilenet_imangenet_v2() {
-  local repeats=${1:-"3"}
-  _workflow_mobilenet imagenet v2 ${repeats}
-}
-
-workflow_mobilenet_imangenet_v3s() {
-  local repeats=${1:-"3"}
-  _workflow_mobilenet imagenet v3s ${repeats}
-}
-
-workflow_mobilenet_imangenet_v3l() {
-  local repeats=${1:-"3"}
-  _workflow_mobilenet imagenet v3l ${repeats}
-}
-
-workflow_mobilenet_cifar10_v2() {
-  local repeats=${1:-"3"}
-  _workflow_mobilenet cifar10 v2 ${repeats}
-}
-
 workflow_mobilenet_cifar10_v3s() {
   local repeats=${1:-"3"}
   _workflow_mobilenet cifar10 v3s ${repeats}
@@ -106,34 +83,6 @@ workflow_mobilenet_cifar10_v3l() {
   _workflow_mobilenet cifar10 v3l ${repeats}
 }
 
-plot_mobilenet_imagenet_v2() {
-  _plot_speedups_mobilenet imagenet v2
-  if [ "${DEVICE}" == "cuda" ]; then
-    _plot_dcgm_mobilenet imagenet v2
-  fi
-}
-
-plot_mobilenet_imagenet_v3s() {
-  _plot_speedups_mobilenet imagenet v3s
-  if [ "${DEVICE}" == "cuda" ]; then
-    _plot_dcgm_mobilenet imagenet v3s
-  fi
-}
-
-plot_mobilenet_imagenet_v3l() {
-  _plot_speedups_mobilenet imagenet v3l
-  if [ "${DEVICE}" == "cuda" ]; then
-    _plot_dcgm_mobilenet imagenet v3l
-  fi
-}
-
-
-plot_mobilenet_cifar10_v2() {
-  _plot_speedups_mobilenet cifar10 v2
-  if [ "${DEVICE}" == "cuda" ]; then
-    _plot_dcgm_mobilenet cifar10 v2
-  fi
-}
 
 plot_mobilenet_cifar10_v3s() {
   _plot_speedups_mobilenet cifar10 v3s

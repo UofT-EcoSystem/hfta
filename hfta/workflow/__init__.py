@@ -1,7 +1,7 @@
 from .runner import (SerialRunner, ConcurrentRunner, HFTARunner, MPSRunner,
                      MIGRunner, MAX_ITERS_PER_EPOCH)
 from .utils import (attach_args, rearrange_runner_kwargs, extract_logging_level,
-                    _init_precs, _init_modes, run_command, _init_mig_devs_for_a100_exp)
+                    _init_precs, _init_modes)
 from .timing import EpochTimer
 
 
@@ -47,8 +47,6 @@ def workflow(
   if modes is None or len(modes) == 0:
     modes = _init_modes(device, device_model)
 
-  if device_model == "a100" and device == "cuda":
-    _init_mig_devs_for_a100_exp()
   runners = []
   if 'serial' in modes:
     runners.append(SerialRunner())
@@ -56,11 +54,12 @@ def workflow(
     runners.append(ConcurrentRunner(**concurrent_runner_kwargs))
   if 'mps' in modes:
     runners.append(MPSRunner(**mps_runner_kwargs))
-  if 'hfta' in modes:
-    runners.append(HFTARunner(**hfta_runner_kwargs))
   if 'mig' in modes:
     assert device_model == "a100"
+    assert len(modes) == 1
     runners.append(MIGRunner(**mig_runner_kwargs))
+  if 'hfta' in modes:
+    runners.append(HFTARunner(**hfta_runner_kwargs))
 
   run_kwargs = {
       'trial_func': trial_func,
