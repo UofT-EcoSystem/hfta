@@ -10,7 +10,7 @@ _mobilenet_warmup_data() {
       --epochs 1 \
       --dataroot ./datasets/${dataset} \
       --eval \
-      --cpu \
+      --device cpu \
       --warmup-data-loading
   else
     echo "Unknown dataset"
