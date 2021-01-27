@@ -83,6 +83,16 @@ _plot_dcgm_pointnet() {
     --plot
 }
 
+_plot_tpu_profile_pointnet() {
+  local task=$1
+  local all_outdirs="$(gsutil ls -d ${STORAGE_BUCKET}/pointnet/run*/${task})"
+  local outdir_arr=($all_outdirs)
+  tpu_profile_parser \
+    --outdirs ${outdir_arr[@]} \
+    --savedir ${OUTDIR_ROOT}/pointnet/tpuprofile-${task}-${DEVICE}-${DEVICE_MODEL}/ \
+    --plot
+}
+
 _plot_dcgm_dcgan() {
   local outdirs=()
   for outdir in ${OUTDIR_ROOT}/dcgan/run*/
@@ -199,6 +209,8 @@ plot_pointnet_cls () {
   _plot_speedups_pointnet cls
   if [ "${DEVICE}" == "cuda" ]; then
     _plot_dcgm_pointnet cls
+  elif [ "${DEVICE}" == "xla" ]; then
+    _plot_tpu_profile_pointnet cls
   fi
 }
 
@@ -216,5 +228,7 @@ plot_pointnet_seg () {
   _plot_speedups_pointnet seg
   if [ "${DEVICE}" == "cuda" ]; then
     _plot_dcgm_pointnet seg
+  elif [ "${DEVICE}" == "xla" ]; then
+    _plot_tpu_profile_pointnet seg
   fi
 }
