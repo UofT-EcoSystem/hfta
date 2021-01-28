@@ -50,11 +50,12 @@ _plot_speedups_mobilenet() {
   do
     outdirs+=(${outdir})
   done
+  mkdir -p ${OUTDIR_ROOT}/mobilenet/${DEVICE}-${DEVICE_MODEL}/${dataset}/${version}/
   timing_parser \
     --outdirs "${outdirs[@]}" \
     --device ${DEVICE}\
     --device-model ${DEVICE_MODEL} \
-    --save ${OUTDIR_ROOT}/mobilenet/${DEVICE}-${DEVICE_MODEL}/${dataset}/${version} \
+    --save ${OUTDIR_ROOT}/mobilenet/${DEVICE}-${DEVICE_MODEL}/${dataset}/${version}/speedups \
     --plot
 }
 
@@ -66,6 +67,7 @@ _plot_dcgm_mobilenet() {
   do
     outdirs+=(${outdir})
   done
+  mkdir -p ${OUTDIR_ROOT}/mobilenet/dcgm-${DEVICE}-${DEVICE_MODEL}/${dataset}/${version}/ 
   dcgm_parser \
     --outdirs "${outdirs[@]}" \
     --device-model ${DEVICE_MODEL} \
