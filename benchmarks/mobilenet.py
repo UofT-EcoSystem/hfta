@@ -32,6 +32,8 @@ def main(args):
         str(epochs),
         '--iters-per-epoch',
         str(iters_per_epoch),
+        '--batch-size',
+        args.batch_size,
         '--device',
         device,
     ]
@@ -123,6 +125,12 @@ def attach_args(parser=argparse.ArgumentParser('MobilNet Benchmark Workflow')):
       help='number of iterations per epochs',
   )
   parser.add_argument(
+      '--batch-size',
+      type=int,
+      default=1024,
+      help='batch size for the training',
+  )
+  parser.add_argument(
       '--dataroot',
       type=str,
       required=True,
@@ -133,7 +141,7 @@ def attach_args(parser=argparse.ArgumentParser('MobilNet Benchmark Workflow')):
       type=str,
       required=True,
       choices=['imagenet', 'cifar10'],
-      help='Use imagenet or cifar10 to train MobilNet',
+      help='Use imagenet or cifar10 to train MobileNet',
   )
   parser.add_argument('--version',
                       type=str,

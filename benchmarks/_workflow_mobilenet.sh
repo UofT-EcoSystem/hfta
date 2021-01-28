@@ -36,6 +36,7 @@ _workflow_mobilenet() {
       --outdir_root ${OUTDIR_ROOT}/mobilenet/run${i}/ \
       --epochs ${epochs} \
       --iters-per-epoch 500 \
+      --batch-size ${batch_size} \
       --dataroot ./datasets/${dataset} \
       --device ${DEVICE} \
       --device-model ${DEVICE_MODEL}
@@ -50,12 +51,11 @@ _plot_speedups_mobilenet() {
   do
     outdirs+=(${outdir})
   done
-  mkdir -p ${OUTDIR_ROOT}/mobilenet/${DEVICE}-${DEVICE_MODEL}/${dataset}/${version}/
   timing_parser \
     --outdirs "${outdirs[@]}" \
     --device ${DEVICE}\
     --device-model ${DEVICE_MODEL} \
-    --save ${OUTDIR_ROOT}/mobilenet/${DEVICE}-${DEVICE_MODEL}/${dataset}/${version}/speedups \
+    --save ${OUTDIR_ROOT}/mobilenet/${dataset}-${version}-${DEVICE}-${DEVICE_MODEL} \
     --plot
 }
 
@@ -67,11 +67,10 @@ _plot_dcgm_mobilenet() {
   do
     outdirs+=(${outdir})
   done
-  mkdir -p ${OUTDIR_ROOT}/mobilenet/dcgm-${DEVICE}-${DEVICE_MODEL}/${dataset}/${version}/ 
   dcgm_parser \
     --outdirs "${outdirs[@]}" \
     --device-model ${DEVICE_MODEL} \
-    --savedir ${OUTDIR_ROOT}/mobilenet/dcgm-${DEVICE}-${DEVICE_MODEL}/${dataset}/${version}/ \
+    --savedir ${OUTDIR_ROOT}/mobilenet/dcgm-${dataset}-${version}-${DEVICE}-${DEVICE_MODEL} \
     --plot
 }
 
