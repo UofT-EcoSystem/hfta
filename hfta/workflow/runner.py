@@ -406,9 +406,9 @@ class MIGRunner(ConcurrentRunner):
     mig_dev_ids = []
     try:
       prefix = "{} nvidia-smi ".format(self.SUDO)
-      run_command("{} mig -cgi {}".format(prefix,
+      run_command("{} mig -cgi {} -i 0".format(prefix,
                                           self.MIG_PROFILE_CONFIGS[B_idx]))
-      run_command("{} mig -cci".format(prefix))
+      run_command("{} mig -cci -i 0".format(prefix))
       cmd = "{} -L".format(prefix)
       cmd_out = run_command(cmd)
       cmd_outs = cmd_out.split("\n")
