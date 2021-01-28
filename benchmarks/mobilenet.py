@@ -33,7 +33,7 @@ def main(args):
         '--iters-per-epoch',
         str(iters_per_epoch),
         '--batch-size',
-        args.batch_size,
+        str(args.batch_size),
         '--device',
         device,
     ]
