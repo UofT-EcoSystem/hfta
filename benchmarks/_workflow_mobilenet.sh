@@ -25,7 +25,8 @@ _workflow_mobilenet() {
   local epochs=${3:-"10"}
   local batch_size=${4:-"1024"}
   local repeats=${5:-"3"}
-
+  local dry_run_iters=200
+  local exp_iters=500
   _mobilenet_warmup_data ${dataset} ${version}
 
   local i
@@ -35,11 +36,15 @@ _workflow_mobilenet() {
       --version ${version} \
       --outdir_root ${OUTDIR_ROOT}/mobilenet/run${i}/ \
       --epochs ${epochs} \
-      --iters-per-epoch 500 \
+      --iters-per-epoch ${exp_iters} \
       --batch-size ${batch_size} \
       --dataroot ./datasets/${dataset} \
       --device ${DEVICE} \
-      --device-model ${DEVICE_MODEL}
+      --device-model ${DEVICE_MODEL} \
+      --concurrent-dry-run-iters-per-epoch ${dry_run_iters} \
+      --mps-dry-run-iters-per-epoch ${dry_run_iters} \
+      --mig-dry-run-iters-per-epoch ${dry_run_iters} \
+      --hfta-dry-run-iters-per-epoch ${dry_run_iters}
   done
 }
 
