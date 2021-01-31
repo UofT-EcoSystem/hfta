@@ -46,7 +46,7 @@ class Runner:
     mig_dev_ids = []
     try:
       prefix = "{} nvidia-smi ".format(self.SUDO)
-      run_command("{} mig -cgi {} -i 0".format(prefix,MIG_config ))
+      run_command("{} mig -cgi {} -i 0".format(prefix, MIG_config))
       run_command("{} mig -cci -i 0".format(prefix))
       cmd = "{} -L".format(prefix)
       cmd_out = run_command(cmd)
