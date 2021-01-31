@@ -21,11 +21,9 @@ def main(args):
   ):
     cmd = [
         'python',
-        'train_{}.py'.format('classification' if args.task ==
-                             'cls' else 'segmentation'),
+        'main.py',
         '--dataset',
         args.dataroot,
-        '--feature_transform',
         '--epochs',
         str(epochs),
         '--iters-per-epoch',
@@ -40,12 +38,9 @@ def main(args):
 
     num_hps = max(B, 1)
     hyperparam_strs = {
-        'lr': [str(random.uniform(0.0001, 0.003)) for _ in range(num_hps)],
-        'beta1': [str(random.uniform(0.8, 0.99)) for _ in range(num_hps)],
-        'beta2': [str(random.uniform(0.9, 0.9999)) for _ in range(num_hps)],
-        'weight_decay': [str(random.uniform(0.0, 0.3)) for _ in range(num_hps)],
-        'gamma': [str(random.uniform(0.0, 0.5)) for _ in range(num_hps)],
-        'step_size': [str(random.randint(1, 10) * 10) for _ in range(num_hps)],
+      'lr': [str(random.uniform(0.1, 10)) for _ in range(num_hps)],
+      'gamma': [str(random.uniform(0.3, 0.99)) for _ in range(num_hps)],
+      'step_size': [str(int(random.uniform(3, 20))) for _ in range(num_hps)],
     }
 
     for flag, vals in hyperparam_strs.items():
@@ -72,7 +67,7 @@ def main(args):
           check=True,
           cwd=os.path.join(
               os.path.abspath(os.path.expanduser(os.path.dirname(__file__))),
-              '../examples/pointnet/',
+              '../examples/bert/',
           ),
           env=env_map,
       )
@@ -85,11 +80,10 @@ def main(args):
       trial_func=trial,
       device=args.device,
       device_model=args.device_model,
-      outdir_prefix=os.path.join(args.outdir_root, args.task),
+      outdir_prefix=args.outdir_root,
       precs=args.precs,
       modes=args.modes,
       enable_dcgm=args.enable_dcgm,
-      enable_tpu_profiler=args.enable_tpu_profiler,
       epochs=args.epochs,
       iters_per_epoch=args.iters_per_epoch,
       concurrent_runner_kwargs=args.concurrent_runner_kwargs,
@@ -102,7 +96,7 @@ def main(args):
     logging.error('Failed!')
 
 
-def attach_args(parser=argparse.ArgumentParser('PointNet Benchmark Workflow')):
+def attach_args(parser=argparse.ArgumentParser('Dcgan Benchmark Workflow')):
   parser.add_argument(
       '--outdir_root',
       type=str,
@@ -126,13 +120,6 @@ def attach_args(parser=argparse.ArgumentParser('PointNet Benchmark Workflow')):
       type=str,
       required=True,
       help='path to the shapenet parts dataset',
-  )
-  parser.add_argument(
-      '--task',
-      type=str,
-      required=True,
-      choices=['cls', 'seg'],
-      help='pointnet classification or segmentation task',
   )
   parser = attach_workflow_args(parser)
   return parser
