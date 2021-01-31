@@ -36,8 +36,24 @@ _dcgan_warmup_data() {
 
 workflow_dcgan () {
   local repeats=${1:-"3"}
-  local epochs=5
+  local epochs=1
   local dataroot="datasets/lsun/"
+  local iters-per-epoch=300
+
+  if [ "${DEVICE}" == "cuda" ]; then
+    if [ "${DEVICE_MODEL}" == "a100" ]; then
+      local modes_flag="--modes serial hfta mig"
+    else
+      local modes_flag="--modes serial hfta"
+    fi
+  elif [ "${DEVICE}" == "xla" ]; then
+    local modes_flag="--modes serial hfta"
+  elif [ "${DEVICE}" == "cpu" ]; then
+    local modes_flag="--modes serial hfta"
+  else
+    echo "Unknown device: ${DEVICE} !"
+    return -1
+  fi
 
   _dcgan_warmup_data ${dataroot}
   local i
@@ -45,19 +61,22 @@ workflow_dcgan () {
     python benchmarks/dcgan.py \
       --outdir_root ${OUTDIR_ROOT}/dcgan/run${i}/ \
       --epochs ${epochs} \
-      --iters-per-epoch 300 \
-      --modes serial hfta \
+      --iters-per-epoch ${iters-per-epoch} \
+      ${modes_flag} \
       --dataroot ${dataroot} \
       --device ${DEVICE} \
       --device-model ${DEVICE_MODEL}
   done
 
-  if [ "${DEVICE}" != "cuda" ]; then
-    return
+  if [ "${DEVICE}" == "cuda" ]; then
+    local modes=("mps" "concurrent")
+  elif [ "${DEVICE}" == "cpu" ]; then
+    local modes=("concurrent")
+  else
+    return 0
   fi
 
   local precs=("fp32" "amp")
-  local modes=("mps" "concurrent")
   for ((i=0; i<${repeats}; i++)); do
     for mode in ${modes[@]}; do
       for prec in ${precs[@]}; do
@@ -66,7 +85,7 @@ workflow_dcgan () {
         python benchmarks/dcgan.py \
           --outdir_root ${OUTDIR_ROOT}/dcgan/run${i}/ \
           --epochs ${epochs} \
-          --iters-per-epoch 300 \
+          --iters-per-epoch ${iters-per-epoch} \
           --modes ${mode} \
           --prec ${prec} \
           --dataroot ${dataroot} \
@@ -77,24 +96,6 @@ workflow_dcgan () {
   done
 }
 
-workflow_dcgan_mig () {
-  local repeats=${1:-"3"}
-  local epochs=5
-  local dataroot="datasets/lsun/"
-
-  _dcgan_warmup_data ${dataroot}
-  local i
-  for ((i=0; i<${repeats}; i++)); do
-    python benchmarks/dcgan.py \
-      --outdir_root ${OUTDIR_ROOT}/dcgan/run${i}/ \
-      --epochs ${epochs} \
-      --iters-per-epoch 300 \
-      --modes mig \
-      --dataroot ${dataroot} \
-      --device ${DEVICE} \
-      --device-model ${DEVICE_MODEL}
-  done
-}
 
 plot_dcgan () {
   _plot_speedups_dcgan
