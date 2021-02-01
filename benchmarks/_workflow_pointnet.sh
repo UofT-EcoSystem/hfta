@@ -26,7 +26,6 @@ _pointnet_warmup_data () {
 _workflow_pointnet () {
   local task=$1
   local repeats=$2
-  local use_mig=${3:-"false"}
 
   _pointnet_warmup_data ${task}
 
@@ -36,24 +35,6 @@ _workflow_pointnet () {
     local epochs=10
   else
     echo "Unknown task: ${task} !"
-    return -1
-  fi
-
-  if [ "${use_mig}" == "true" ]; then
-    local modes_flag="--modes mig"
-  elif [ "${use_mig}" == "false" ]; then
-    if [ "${DEVICE}" == "cuda" ]; then
-      local modes_flag="--modes serial concurrent mps hfta"
-    elif [ "${DEVICE}" == "xla" ]; then
-      local modes_flag="--modes serial hfta"
-    elif [ "${DEVICE}" == "cpu" ]; then
-      local modes_flag="--modes serial concurrent hfta"
-    else
-      echo "Unknown device: ${DEVICE} !"
-      return -1
-    fi
-  else
-    echo "Unknown use_mig: ${use_mig} !"
     return -1
   fi
 
@@ -106,11 +87,6 @@ workflow_pointnet_cls () {
   _workflow_pointnet cls ${repeats}
 }
 
-workflow_pointnet_cls_mig () {
-  local repeats=${1:-"3"}
-  _workflow_pointnet cls ${repeats} true
-}
-
 plot_pointnet_cls () {
   _plot_speedups_pointnet cls
   if [ "${DEVICE}" == "cuda" ]; then
@@ -121,11 +97,6 @@ plot_pointnet_cls () {
 workflow_pointnet_seg () {
   local repeats=${1:-"3"}
   _workflow_pointnet seg ${repeats}
-}
-
-workflow_pointnet_seg_mig () {
-  local repeats=${1:-"3"}
-  _workflow_pointnet seg ${repeats} true
 }
 
 plot_pointnet_seg () {

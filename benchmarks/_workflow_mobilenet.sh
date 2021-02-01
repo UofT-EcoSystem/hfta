@@ -27,6 +27,7 @@ _workflow_mobilenet() {
   local repeats=${5:-"3"}
   local dry_run_iters=200
   local exp_iters=500
+
   _mobilenet_warmup_data ${dataset} ${version}
 
   local i

@@ -62,7 +62,6 @@ def workflow(
     runners.append(MPSRunner(**mps_runner_kwargs))
   if 'mig' in modes:
     assert device_model == "a100"
-    assert len(modes) == 1
     runners.append(MIGRunner(**mig_runner_kwargs))
   if 'hfta' in modes:
     runners.append(HFTARunner(**hfta_runner_kwargs))
