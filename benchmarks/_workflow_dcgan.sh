@@ -36,9 +36,9 @@ _dcgan_warmup_data() {
 
 workflow_dcgan () {
   local repeats=${1:-"3"}
-  local epochs=1
+  local epochs=5
   local dataroot="datasets/lsun/"
-  local iters-per-epoch=300
+  local iters_per_epoch=300
 
   if [ "${DEVICE}" == "cuda" ]; then
     if [ "${DEVICE_MODEL}" == "a100" ]; then
@@ -61,7 +61,7 @@ workflow_dcgan () {
     python benchmarks/dcgan.py \
       --outdir_root ${OUTDIR_ROOT}/dcgan/run${i}/ \
       --epochs ${epochs} \
-      --iters-per-epoch ${iters-per-epoch} \
+      --iters-per-epoch ${iters_per_epoch} \
       ${modes_flag} \
       --dataroot ${dataroot} \
       --device ${DEVICE} \
@@ -85,7 +85,7 @@ workflow_dcgan () {
         python benchmarks/dcgan.py \
           --outdir_root ${OUTDIR_ROOT}/dcgan/run${i}/ \
           --epochs ${epochs} \
-          --iters-per-epoch ${iters-per-epoch} \
+          --iters-per-epoch ${iters_per_epoch} \
           --modes ${mode} \
           --prec ${prec} \
           --dataroot ${dataroot} \

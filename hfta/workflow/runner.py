@@ -41,12 +41,12 @@ class Runner:
   def _plan_Bs(self, trial_func=None, device='cuda', prec='fp32'):
     raise NotImplementedError('Runner is an abstract/interface class!')
 
-  def _create_mig_instances(self, MIG_config):
+  def _create_mig_instances(self, mig_config):
     self._distroy_mig_instances()
     mig_dev_ids = []
     try:
       prefix = "{} nvidia-smi ".format(self.SUDO)
-      run_command("{} mig -cgi {} -i 0".format(prefix, MIG_config))
+      run_command("{} mig -cgi {} -i 0".format(prefix, mig_config))
       run_command("{} mig -cci -i 0".format(prefix))
       cmd = "{} -L".format(prefix)
       cmd_out = run_command(cmd)
@@ -152,7 +152,7 @@ class Runner:
       iters_per_epoch=MAX_ITERS_PER_EPOCH,
   ):
     self.info('Sweeping precs: {} ...'.format(precs))
-    if device == 'cuda' and device_model == 'a100':
+    if device == 'cuda' and device_model == 'a100' and self.mode != 'mig':
       self._create_mig_instances("0")
     for prec in precs:
       self.info('Measuring prec: {} ...'.format(prec))
@@ -187,7 +187,7 @@ class Runner:
       if not succeeded:
         self.error('prec = {} failed!'.format(prec))
         return succeeded
-    if device == 'cuda' and device_model == 'a100':
+    if device == 'cuda' and device_model == 'a100' and self.mode != 'mig':
       self._distroy_mig_instances()
     return True
 

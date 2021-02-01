@@ -27,22 +27,8 @@ _workflow_mobilenet() {
   local repeats=${5:-"3"}
   local dry_run_iters=200
   local exp_iters=500
-  _mobilenet_warmup_data ${dataset} ${version}
 
-  if [ "${DEVICE}" == "cuda" ]; then
-    if [ "${DEVICE_MODEL}" == "a100" ]; then
-      local modes_flag="--modes serial concurrent mps hfta mig"
-    else
-      local modes_flag="--modes serial concurrent mps hfta"
-    fi
-  elif [ "${DEVICE}" == "xla" ]; then
-    local modes_flag="--modes serial hfta"
-  elif [ "${DEVICE}" == "cpu" ]; then
-    local modes_flag="--modes serial concurrent hfta"
-  else
-    echo "Unknown device: ${DEVICE} !"
-    return -1
-  fi
+  _mobilenet_warmup_data ${dataset} ${version}
 
   local i
   for ((i=0; i<${repeats}; i++)); do
@@ -56,7 +42,6 @@ _workflow_mobilenet() {
       --dataroot ./datasets/${dataset} \
       --device ${DEVICE} \
       --device-model ${DEVICE_MODEL} \
-      ${modes_flag}  \
       --concurrent-dry-run-iters-per-epoch ${dry_run_iters} \
       --mps-dry-run-iters-per-epoch ${dry_run_iters} \
       --mig-dry-run-iters-per-epoch ${dry_run_iters} \
