@@ -81,6 +81,17 @@ _plot_dcgm_mobilenet() {
     --plot
 }
 
+_plot_tpu_profile_mobilenet() {
+  local dataset=$1
+  local version=$2
+  local all_outdirs="$(gsutil ls -d ${STORAGE_BUCKET}/mobilenet/run*/${dataset}/${version})"
+  local outdir_arr=($all_outdirs)
+  tpu_profile_parser \
+    --outdirs ${outdir_arr[@]} \
+    --savedir ${OUTDIR_ROOT}/mobilenet/tpuprofile-${dataset}-${version}-${DEVICE}-${DEVICE_MODEL}/ \
+    --plot
+}
+
 workflow_mobilenet_cifar10_v3s() {
   local repeats=${1:-"3"}
   _workflow_mobilenet cifar10 v3s 20 1024 ${repeats}
@@ -96,6 +107,8 @@ plot_mobilenet_cifar10_v3s() {
   _plot_speedups_mobilenet cifar10 v3s
   if [ "${DEVICE}" == "cuda" ]; then
     _plot_dcgm_mobilenet cifar10 v3s
+  elif [ "${DEVICE}" == "xla" ]; then
+    _plot_tpu_profile_mobilenet cifar10 v3s
   fi
 }
 
@@ -103,6 +116,7 @@ plot_mobilenet_cifar10_v3l() {
   _plot_speedups_mobilenet cifar10 v3l
   if [ "${DEVICE}" == "cuda" ]; then
     _plot_dcgm_mobilenet cifar10 v3l
+  elif [ "${DEVICE}" == "xla" ]; then
+    _plot_tpu_profile_mobilenet cifar10 v3l
   fi
 }
-
