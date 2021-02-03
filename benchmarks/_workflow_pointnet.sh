@@ -48,7 +48,8 @@ _workflow_pointnet () {
       --task ${task} \
       ${modes_flag} \
       --device ${DEVICE} \
-      --device-model ${DEVICE_MODEL}
+      --device-model ${DEVICE_MODEL} \
+      --enable-tpu-profiler
   done
 }
 
