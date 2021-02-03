@@ -42,6 +42,7 @@ _workflow_mobilenet() {
       --dataroot ./datasets/${dataset} \
       --device ${DEVICE} \
       --device-model ${DEVICE_MODEL} \
+      --enable-tpu-profiler \
       --concurrent-dry-run-iters-per-epoch ${dry_run_iters} \
       --mps-dry-run-iters-per-epoch ${dry_run_iters} \
       --mig-dry-run-iters-per-epoch ${dry_run_iters} \

@@ -116,7 +116,7 @@ class InvertedResidual(nn.Module):
         ),
         # pw-linear
         nn.Conv2d(hidden_dim, oup, 1, 1, 0, bias=False),
-        norm_layer(oup,track_running_stats=track_running_stats),
+        norm_layer(oup, track_running_stats=track_running_stats),
     ])
     self.conv = nn.Sequential(*layers)
 
