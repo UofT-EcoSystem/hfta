@@ -27,7 +27,8 @@ from hfta.optim import (get_hfta_optim_for, get_hfta_lr_scheduler_for,
 from hfta.workflow import EpochTimer
 
 
-def attach_args(parser=argparse.ArgumentParser(description='MobileNet V2 and V3 Example')):
+def attach_args(
+    parser=argparse.ArgumentParser(description='MobileNet V2 and V3 Example')):
   # Training settings
   parser.add_argument(
       '--version',
@@ -372,7 +373,11 @@ def main(args):
      args.step_size) = (args.lr[0], args.beta1[0], args.beta2[0],
                         args.weight_decay[0], args.gamma[0], args.step_size[0])
 
-  model = _get_model_constructor(args)(num_classes=num_classes, B=B).to(device)
+  model = _get_model_constructor(args)(
+      num_classes=num_classes,
+      B=B,
+      track_running_stats=(args.device != 'xla'),
+  ).to(device)
   criterion = nn.CrossEntropyLoss()
   optimizer = get_hfta_optim_for(optim.Adam, B=B)(
       model.parameters(),
@@ -390,8 +395,8 @@ def main(args):
 
   for epoch in range(args.epochs):
     epoch_timer.epoch_start(epoch)
-    num_samples_done = train(args, model, criterion, optimizer, scaler,
-                             device, train_loader, epoch, B)
+    num_samples_done = train(args, model, criterion, optimizer, scaler, device,
+                             train_loader, epoch, B)
     scheduler.step()
 
     epoch_timer.epoch_stop(num_samples_done)
