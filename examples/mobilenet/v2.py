@@ -52,6 +52,7 @@ class ConvBNReLU(nn.Sequential):
       stride: int = 1,
       groups: int = 1,
       norm_layer: Optional[Callable[..., nn.Module]] = None,
+      track_running_stats: bool = True,
   ) -> None:
     padding = (kernel_size - 1) // 2
     if norm_layer is None:
@@ -66,7 +67,7 @@ class ConvBNReLU(nn.Sequential):
             groups=groups,
             bias=False,
         ),
-        norm_layer(out_planes),
+        norm_layer(out_planes, track_running_stats=track_running_stats),
         nn.ReLU6(inplace=True),
     )
 
@@ -80,6 +81,7 @@ class InvertedResidual(nn.Module):
       stride: int,
       expand_ratio: int,
       norm_layer: Optional[Callable[..., nn.Module]] = None,
+      track_running_stats: bool = True,
   ) -> None:
     super(InvertedResidual, self).__init__()
     self.stride = stride
@@ -100,6 +102,7 @@ class InvertedResidual(nn.Module):
               hidden_dim,
               kernel_size=1,
               norm_layer=norm_layer,
+              track_running_stats=track_running_stats,
           ))
     layers.extend([
         # dw
@@ -109,10 +112,11 @@ class InvertedResidual(nn.Module):
             stride=stride,
             groups=hidden_dim,
             norm_layer=norm_layer,
+            track_running_stats=track_running_stats,
         ),
         # pw-linear
         nn.Conv2d(hidden_dim, oup, 1, 1, 0, bias=False),
-        norm_layer(oup),
+        norm_layer(oup,track_running_stats=track_running_stats),
     ])
     self.conv = nn.Sequential(*layers)
 
@@ -134,6 +138,7 @@ class MobileNetV2(nn.Module):
       block: Optional[Callable[..., nn.Module]] = None,
       norm_layer: Optional[Callable[..., nn.Module]] = None,
       B: int = 0,
+      track_running_stats: bool = True,
   ) -> None:
     """
     MobileNet V2 main class
@@ -187,7 +192,13 @@ class MobileNetV2(nn.Module):
         round_nearest,
     )
     features: List[nn.Module] = [
-        ConvBNReLU(3, input_channel, stride=2, norm_layer=norm_layer)
+        ConvBNReLU(
+            3,
+            input_channel,
+            stride=2,
+            norm_layer=norm_layer,
+            track_running_stats=track_running_stats,
+        )
     ]
     # building inverted residual blocks
     for t, c, n, s in inverted_residual_setting:
@@ -201,6 +212,7 @@ class MobileNetV2(nn.Module):
                 stride,
                 expand_ratio=t,
                 norm_layer=norm_layer,
+                track_running_stats=track_running_stats,
             ))
         input_channel = output_channel
     # building last several layers
@@ -210,6 +222,7 @@ class MobileNetV2(nn.Module):
             self.last_channel,
             kernel_size=1,
             norm_layer=norm_layer,
+            track_running_stats=track_running_stats,
         ))
     # make it nn.Sequential
     self.features = nn.Sequential(*features)
