@@ -36,6 +36,7 @@ def main(args):
         str(args.batch_size),
         '--device',
         device,
+        '--warmup-data-loading',
     ]
     if outdir is not None:
       cmd.extend(['--outf', outdir])
