@@ -13,7 +13,7 @@ def workflow(
     precs=None,
     modes=None,
     enable_dcgm=True,
-    enable_tpu_profiler=True,
+    enable_tpu_profiler=False,
     tpu_profiler_waittime=10.0,
     tpu_profiler_duration=10.0,
     epochs=10,
