@@ -27,6 +27,7 @@ _workflow_mobilenet() {
   local repeats=${5:-"3"}
   local dry_run_iters=200
   local exp_iters=500
+  local hfta_dry_run_repeats=3
 
   _mobilenet_warmup_data ${dataset} ${version}
 
@@ -46,7 +47,8 @@ _workflow_mobilenet() {
       --concurrent-dry-run-iters-per-epoch ${dry_run_iters} \
       --mps-dry-run-iters-per-epoch ${dry_run_iters} \
       --mig-dry-run-iters-per-epoch ${dry_run_iters} \
-      --hfta-dry-run-iters-per-epoch ${dry_run_iters}
+      --hfta-dry-run-iters-per-epoch ${dry_run_iters} \
+      --hfta-dry-run-repeats ${hfta_dry_run_repeats}
   done
 }
 
