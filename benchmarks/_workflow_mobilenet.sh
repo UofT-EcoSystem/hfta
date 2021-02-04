@@ -27,7 +27,12 @@ _workflow_mobilenet() {
   local repeats=${5:-"3"}
   local dry_run_iters=200
   local exp_iters=500
-  local hfta_dry_run_repeats=3
+  local hfta_dry_run_repeats=1
+
+  # For TPU, we need to retry to find a stable max_B
+  if [ "${DEVICE}" == "xla" ]; then
+    hfta_dry_run_repeats=3
+  fi
 
   _mobilenet_warmup_data ${dataset} ${version}
 
