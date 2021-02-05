@@ -6,6 +6,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from .dcgm_monitor import dcgm_monitor_start, dcgm_monitor_stop, DcgmMonitor
+from .tpu_monitor import tpu_monitor_start, tpu_monitor_stop, TpuMonitor
 from .plan import find_max_B, expovariate_plan
 from .utils import run_command
 
@@ -13,6 +14,7 @@ MAX_ITERS_PER_EPOCH = 1000000000
 
 
 class Runner:
+  SUDO = '' if os.geteuid() == 0 else 'sudo'
 
   def logging_format(self, msg):
     return '{}: {}'.format(self.mode, msg)
@@ -39,6 +41,36 @@ class Runner:
   def _plan_Bs(self, trial_func=None, device='cuda', prec='fp32'):
     raise NotImplementedError('Runner is an abstract/interface class!')
 
+  def _create_mig_instances(self, mig_config):
+    self._distroy_mig_instances()
+    mig_dev_ids = []
+    try:
+      prefix = "{} nvidia-smi ".format(self.SUDO)
+      run_command("{} mig -cgi {} -i 0".format(prefix, mig_config))
+      run_command("{} mig -cci -i 0".format(prefix))
+      cmd = "{} -L".format(prefix)
+      cmd_out = run_command(cmd)
+      cmd_outs = cmd_out.split("\n")
+      for item in cmd_outs:
+        if ("MIG" in item):
+          mig_dev_ids.append(item.split("UUID: ")[-1][:-1])
+    except subprocess.CalledProcessError as e:
+      logging.error(e)
+
+    return mig_dev_ids
+
+  def _distroy_mig_instances(self):
+    try:
+      run_command("{} nvidia-smi mig -dci -i 0".format(self.SUDO))
+      run_command("{} nvidia-smi mig -dgi -i 0".format(self.SUDO))
+    except subprocess.CalledProcessError as e:
+      # 'returncode==6' indicates it can't find any MIG instance to destory.
+      # That means all MIG instances have been destoryed.
+      if e.returncode != 6:
+        logging.error(e)
+        return e.returncode
+    return 0
+
   def _run_B(
       self,
       B,
@@ -63,6 +95,9 @@ class Runner:
       prec='fp32',
       outdir_prefix=None,
       enable_dcgm=None,
+      enable_tpu_profiler=None,
+      tpu_profiler_waittime=10,
+      tpu_profiler_duration=10,
       epochs=10,
       iters_per_epoch=MAX_ITERS_PER_EPOCH,
   ):
@@ -74,6 +109,12 @@ class Runner:
       if enable_dcgm and device == 'cuda':
         monitor = DcgmMonitor(device_model)
         monitor_thread = dcgm_monitor_start(monitor, outdir)
+
+      if enable_tpu_profiler and device == 'xla':
+        monitor = TpuMonitor(wait_time=tpu_profiler_waittime,
+                             duration=tpu_profiler_duration,
+                             outdir=outdir)
+        monitor_thread = tpu_monitor_start(monitor)
 
       try:
         succeeded = self._run_B(
@@ -88,6 +129,8 @@ class Runner:
       finally:
         if enable_dcgm and device == 'cuda':
           dcgm_monitor_stop(monitor, monitor_thread)
+        if enable_tpu_profiler and device == 'xla':
+          tpu_monitor_stop(monitor, monitor_thread)
       if not succeeded:
         self.error('B = {} failed!'.format(B))
         return succeeded
@@ -102,10 +145,15 @@ class Runner:
       precs=['fp32', 'amp'],
       outdir_prefix=None,
       enable_dcgm=True,
+      enable_tpu_profiler=True,
+      tpu_profiler_waittime=10,
+      tpu_profiler_duration=10,
       epochs=10,
       iters_per_epoch=MAX_ITERS_PER_EPOCH,
   ):
     self.info('Sweeping precs: {} ...'.format(precs))
+    if device == 'cuda' and device_model == 'a100' and self.mode != 'mig':
+      self._create_mig_instances("0")
     for prec in precs:
       self.info('Measuring prec: {} ...'.format(prec))
       orig_envs = dict(os.environ)
@@ -125,6 +173,9 @@ class Runner:
               prec,
           ),
           enable_dcgm=enable_dcgm,
+          enable_tpu_profiler=enable_tpu_profiler,
+          tpu_profiler_waittime=tpu_profiler_waittime,
+          tpu_profiler_duration=tpu_profiler_duration,
           epochs=epochs,
           iters_per_epoch=iters_per_epoch,
       )
@@ -136,7 +187,8 @@ class Runner:
       if not succeeded:
         self.error('prec = {} failed!'.format(prec))
         return succeeded
-
+    if device == 'cuda' and device_model == 'a100' and self.mode != 'mig':
+      self._distroy_mig_instances()
     return True
 
 
@@ -261,7 +313,7 @@ class ConcurrentRunner(HardwareSharingRunner):
 
   def __init__(
       self,
-      dry_run_repeats=10,
+      dry_run_repeats=2,
       max_num_Bs=5,
       lambd=4.0,
       dry_run_epochs=2,
@@ -328,8 +380,7 @@ class MPSRunner(ConcurrentRunner):
       iters_per_epoch=MAX_ITERS_PER_EPOCH,
       outdir_prefix=None,
   ):
-    sudo = '' if os.geteuid() == 0 else 'sudo'
-    run_command('{} nvidia-smi -i 0 -c EXCLUSIVE_PROCESS'.format(sudo))
+    run_command('{} nvidia-smi -i 0 -c EXCLUSIVE_PROCESS'.format(self.SUDO))
     os.environ['CUDA_VISIBLE_DEVICES'] = '0'
     os.environ['CUDA_MPS_PIPE_DIRECTORY'] = '/tmp/nvidia-mps'
     os.environ['CUDA_MPS_LOG_DIRECTORY'] = '/tmp/nvidia-log'
@@ -346,8 +397,8 @@ class MPSRunner(ConcurrentRunner):
           outdir_prefix=outdir_prefix,
       )
     finally:
-      run_command('{} nvidia-cuda-mps-control'.format(sudo), 'quit')
-      run_command('{} nvidia-smi -i 0 -c 0'.format(sudo))
+      run_command('{} nvidia-cuda-mps-control'.format(self.SUDO), 'quit')
+      run_command('{} nvidia-smi -i 0 -c 0'.format(self.SUDO))
       del os.environ['CUDA_VISIBLE_DEVICES']
       del os.environ['CUDA_MPS_PIPE_DIRECTORY']
       del os.environ['CUDA_MPS_LOG_DIRECTORY']
@@ -359,7 +410,6 @@ class MIGRunner(ConcurrentRunner):
   MIG_PROFILE_CONFIGS = ('0', '9,9', '14,14,14', '14,14,14,19',
                          '14,14,19,19,19', '14,19,19,19,19,19',
                          '19,19,19,19,19,19,19')
-  SUDO = '' if os.geteuid() == 0 else 'sudo'
   B_LIMIT = 7
 
   def __init__(
@@ -382,38 +432,6 @@ class MIGRunner(ConcurrentRunner):
   def mode(self):
     return 'mig'
 
-  def _create_mig_instances(self, B):
-    self._distroy_mig_instances()
-    B_idx = B - 1
-    mig_dev_ids = []
-    try:
-      prefix = "{} nvidia-smi ".format(self.SUDO)
-      run_command("{} mig -cgi {}".format(prefix,
-                                          self.MIG_PROFILE_CONFIGS[B_idx]))
-      run_command("{} mig -cci".format(prefix))
-      cmd = "{} -L".format(prefix)
-      cmd_out = run_command(cmd)
-      cmd_outs = cmd_out.split("\n")
-      for item in cmd_outs:
-        if ("MIG" in item):
-          mig_dev_ids.append(item.split("UUID: ")[-1][:-1])
-    except subprocess.CalledProcessError as e:
-      logging.error(e)
-
-    return mig_dev_ids
-
-  def _distroy_mig_instances(self):
-    try:
-      run_command("{} nvidia-smi mig -dci -i 0".format(self.SUDO))
-      run_command("{} nvidia-smi mig -dgi -i 0".format(self.SUDO))
-    except subprocess.CalledProcessError as e:
-      # 'returncode==6' indicates it can't find any MIG instance to destory.
-      # That means all MIG instances have been destoryed.
-      if e.returncode != 6:
-        logging.error(e)
-        return e.returncode
-    return 0
-
   def _run_B(
       self,
       B,
@@ -426,7 +444,7 @@ class MIGRunner(ConcurrentRunner):
   ):
 
     assert device == 'cuda'
-    mig_instances = self._create_mig_instances(B)
+    mig_instances = self._create_mig_instances(self.MIG_PROFILE_CONFIGS[B - 1])
 
     if len(mig_instances) == 0:
       raise RuntimeError(""" CAN NOT FIND ANY MIG DEVICE!

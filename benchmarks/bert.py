@@ -38,9 +38,9 @@ def main(args):
 
     num_hps = max(B, 1)
     hyperparam_strs = {
-      'lr': [str(random.uniform(0.1, 10)) for _ in range(num_hps)],
-      'gamma': [str(random.uniform(0.3, 0.99)) for _ in range(num_hps)],
-      'step_size': [str(int(random.uniform(3, 20))) for _ in range(num_hps)],
+        'lr': [str(random.uniform(0.1, 10)) for _ in range(num_hps)],
+        'gamma': [str(random.uniform(0.3, 0.99)) for _ in range(num_hps)],
+        'step_size': [str(int(random.uniform(3, 20))) for _ in range(num_hps)],
     }
 
     for flag, vals in hyperparam_strs.items():
@@ -84,6 +84,7 @@ def main(args):
       precs=args.precs,
       modes=args.modes,
       enable_dcgm=args.enable_dcgm,
+      enable_tpu_profiler=args.enable_tpu_profiler,
       epochs=args.epochs,
       iters_per_epoch=args.iters_per_epoch,
       concurrent_runner_kwargs=args.concurrent_runner_kwargs,

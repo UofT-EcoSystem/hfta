@@ -1,7 +1,8 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from hfta.ops import get_hfta_op_for
+import math
+import functools
 
 
 class MultiheadAttention(nn.Module):
@@ -13,17 +14,13 @@ class MultiheadAttention(nn.Module):
                bias=True,
                activation=F.relu,
                B=1):
-    """Multi-head attention.
-        :param in_features: Size of each input sample.
-        :param head_num: Number of heads.
-        :param bias: Whether to use the bias term.
-        :param activation: The activation after each linear transformation.
-        """
+
     super(MultiheadAttention, self).__init__()
     if embed_dim % num_heads != 0:
       raise ValueError(
           '`in_features`({}) should be divisible by `head_num`({})'.format(
               embed_dim, num_heads))
+    from hfta.ops import get_hfta_op_for
     Linear = get_hfta_op_for(nn.Linear, B=B)
     self.embed_dim = embed_dim
     self.num_heads = num_heads
@@ -39,13 +36,28 @@ class MultiheadAttention(nn.Module):
     self.linear_v = Linear(embed_dim, embed_dim, bias)
     self.linear_o = Linear(embed_dim, embed_dim)
 
+  def _get_xavier_uniform_data(self):
+    data = torch.zeros((3 * self.embed_dim, self.embed_dim))
+    torch.nn.init.xavier_uniform_(data)
+    fan_in, fan_out = nn.init._calculate_fan_in_and_fan_out(data)
+    std = math.sqrt(2.0 / float(fan_in + fan_out))
+    a = math.sqrt(3.0) * std  # Calculate uniform bounds from standard deviation
+    return nn.init._no_grad_uniform_(data, -a, a).reshape(
+        (3, self.embed_dim, self.embed_dim))
+
   def _reset_parameters(self):
-    tmp_weight = torch.zeros((3 * self.embed_dim, self.embed_dim))
-    torch.nn.init.xavier_uniform_(tmp_weight)
-    tmp_weight = tmp_weight.reshape((3, self.embed_dim, self.embed_dim))
-    self.linear_q.weight.data = tmp_weight[0]
-    self.linear_k.weight.data = tmp_weight[1]
-    self.linear_v.weight.data = tmp_weight[2]
+    if self.B > 0:
+      for b in range(self.B):
+        tmp_weight = self._get_xavier_uniform_data()
+        self.linear_q.weight.data[b] = tmp_weight[0]
+        self.linear_k.weight.data[b] = tmp_weight[1]
+        self.linear_v.weight.data[b] = tmp_weight[2]
+    else:
+      tmp_weight = self._get_xavier_uniform_data()
+      self.linear_q.weight.data = tmp_weight[0]
+      self.linear_k.weight.data = tmp_weight[1]
+      self.linear_v.weight.data = tmp_weight[2]
+
     if self.bias:
       torch.nn.init.constant_(self.linear_q.bias, 0.)
       torch.nn.init.constant_(self.linear_k.bias, 0.)
@@ -58,11 +70,13 @@ class MultiheadAttention(nn.Module):
               key_padding_mask=None,
               need_weights=True,
               attn_mask=None):
-    # attn_mask == [B, N, num_heads, L, S] or [L, S]
-    # query = [B, N, L, E]
-    # key = value = [B, N, S, E]
-    # assert S == L
-    # output: o = [B, N, L, E], o_weight = [B, N, L, S]
+    """
+      attn_mask.shape == [B, N, num_heads, L, S] or [L, S]
+      query.shape = [B, N, L, E]
+      key.shape = value.shape = [B, N, S, E]
+      output: o.shape = [B, N, L, E], o_weight.shape = [B, N, L, S]
+      Only support S==L
+    """
     N = query.shape[0]
 
     if self.B > 0:
@@ -151,22 +165,23 @@ class MultiheadAttention(nn.Module):
   @staticmethod
   def gen_history_mask(x):
     """Generate the mask that only uses history data.
-        :param x: Input tensor.
-        :return: The mask.
-        """
+      :param x: Input tensor.
+      :return: The mask.
+    """
     batch_size, seq_len, _ = x.size()
     res = torch.tril(torch.ones(seq_len, seq_len))
     return res.view(1, seq_len, seq_len).repeat(batch_size, 1, 1)
 
   def extra_repr(self):
-    return 'in_features={}, head_num={}, bias={}, activation={}'.format(
+    return 'in_features={}, head_num={}, bias={}, activation={}, B={}'.format(
         self.embed_dim,
         self.num_heads,
         self.bias,
         self.activation,
+        self.B,
     )
 
-  def snatch_parameters(self, other):
+  def snatch_parameters(self, other, b=0):
     assert isinstance(other, nn.MultiheadAttention)
     assert other._qkv_same_embed_dim
     assert other.bias_k is None and other.bias_v is None
@@ -174,20 +189,42 @@ class MultiheadAttention(nn.Module):
     assert self.num_heads == other.num_heads
 
     tmp_weight = other.in_proj_weight.reshape(3, self.embed_dim, self.embed_dim)
-    self.linear_q.weight.data = tmp_weight[0].view(
-        self.linear_q.weight.data.shape)
-    self.linear_k.weight.data = tmp_weight[1].view(
-        self.linear_k.weight.data.shape)
-    self.linear_v.weight.data = tmp_weight[2].view(
-        self.linear_v.weight.data.shape)
+    if b > 0:
+      self.linear_q.weight.data[b - 1] = tmp_weight[0].transpose(0, 1).view(
+          self.linear_q.weight.data[b - 1].shape)
+      self.linear_k.weight.data[b - 1] = tmp_weight[1].transpose(0, 1).view(
+          self.linear_k.weight.data[b - 1].shape)
+      self.linear_v.weight.data[b - 1] = tmp_weight[2].transpose(0, 1).view(
+          self.linear_v.weight.data[b - 1].shape)
+      self.linear_o.weight.data[b - 1] = other.out_proj.weight.data.transpose(
+          0, 1).view(self.linear_o.weight.data[b - 1].shape)
+      self.linear_o.bias.data[b - 1] = other.out_proj.bias.data.view(
+          self.linear_o.bias.data[b - 1].shape)
+    else:
+      self.linear_q.weight.data = tmp_weight[0].view(
+          self.linear_q.weight.data.shape)
+      self.linear_k.weight.data = tmp_weight[1].view(
+          self.linear_k.weight.data.shape)
+      self.linear_v.weight.data = tmp_weight[2].view(
+          self.linear_v.weight.data.shape)
+      self.linear_o.weight.data = other.out_proj.weight.data.view(
+          self.linear_o.weight.data.shape)
+      self.linear_o.bias.data = other.out_proj.bias.data.view(
+          self.linear_o.bias.data.shape)
 
     if self.bias:
       tmp_bias = other.in_proj_bias.reshape(3, self.embed_dim)
-      self.linear_q.bias.data = tmp_bias[0].view(self.linear_q.bias.data.shape)
-      self.linear_k.bias.data = tmp_bias[1].view(self.linear_k.bias.data.shape)
-      self.linear_v.bias.data = tmp_bias[2].view(self.linear_v.bias.data.shape)
-
-    self.linear_o.weight.data = other.out_proj.weight.data.view(
-        self.linear_o.weight.data.shape)
-    self.linear_o.bias.data = other.out_proj.bias.data.view(
-        self.linear_o.bias.data.shape)
+      if b > 0:
+        self.linear_q.bias.data[b - 1] = tmp_bias[0].view(
+            self.linear_q.bias.data[b - 1].shape)
+        self.linear_k.bias.data[b - 1] = tmp_bias[1].view(
+            self.linear_k.bias.data[b - 1].shape)
+        self.linear_v.bias.data[b - 1] = tmp_bias[2].view(
+            self.linear_v.bias.data[b - 1].shape)
+      else:
+        self.linear_q.bias.data = tmp_bias[0].view(
+            self.linear_q.bias.data.shape)
+        self.linear_k.bias.data = tmp_bias[1].view(
+            self.linear_k.bias.data.shape)
+        self.linear_v.bias.data = tmp_bias[2].view(
+            self.linear_v.bias.data.shape)

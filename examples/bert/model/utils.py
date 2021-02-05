@@ -1,17 +1,21 @@
+# Copyright (c) 2020-     UofT-EcoSystem,
+# Copyright 2018 - 2019 Junseong Kim, Scatter Lab, respective BERT contributors
+# Copyright (c) 2018 Alexander Rush : The Annotated Trasnformer
+#
+#    Licensed under the Apache License, Version 2.0 (the "License");
+#    you may not use this file except in compliance with the License.
+#    You may obtain a copy of the License at
+#
+#        http://www.apache.org/licenses/LICENSE-2.0
+#
+#    Unless required by applicable law or agreed to in writing, software
+#    distributed under the License is distributed on an "AS IS" BASIS,
+#    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#    See the License for the specific language governing permissions and
+#    limitations under the License.
+
 import torch.nn as nn
-import torch
-import math
 from hfta.ops import get_hfta_op_for
-
-
-class GELU(nn.Module):
-  """
-    Paper Section 3.4, last paragraph notice that BERT used the GELU instead of RELU
-    """
-
-  def forward(self, x):
-    return 0.5 * x * (1 + torch.tanh(
-        math.sqrt(2 / math.pi) * (x + 0.044715 * torch.pow(x, 3))))
 
 
 class PositionwiseFeedForward(nn.Module):
@@ -23,17 +27,16 @@ class PositionwiseFeedForward(nn.Module):
     self.w_1 = Linear(d_model, d_ff)
     self.w_2 = Linear(d_ff, d_model)
     self.dropout = get_hfta_op_for(nn.Dropout, B)(dropout)
-    self.activation = GELU()
 
   def forward(self, x):
-    return self.w_2(self.dropout(self.activation(self.w_1(x))))
+    return self.w_2(self.dropout(nn.functional.gelu(self.w_1(x))))
 
 
 class SublayerConnection(nn.Module):
   """
     A residual connection followed by a layer norm.
     Note for code simplicity the norm is first as opposed to last.
-    """
+  """
 
   def __init__(self, size, dropout, B=1):
     super(SublayerConnection, self).__init__()

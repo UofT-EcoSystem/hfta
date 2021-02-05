@@ -1,3 +1,19 @@
+# Copyright (c) 2020-     UofT-EcoSystem,
+# Copyright 2018 - 2019 Junseong Kim, Scatter Lab, respective BERT contributors
+# Copyright (c) 2018 Alexander Rush : The Annotated Trasnformer
+#
+#    Licensed under the Apache License, Version 2.0 (the "License");
+#    you may not use this file except in compliance with the License.
+#    You may obtain a copy of the License at
+#
+#        http://www.apache.org/licenses/LICENSE-2.0
+#
+#    Unless required by applicable law or agreed to in writing, software
+#    distributed under the License is distributed on an "AS IS" BASIS,
+#    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#    See the License for the specific language governing permissions and
+#    limitations under the License.
+
 # coding: utf-8
 import argparse
 import time
@@ -12,6 +28,7 @@ import torch.backends.cudnn as cudnn
 import torch.cuda.amp as amp
 from hfta.optim import get_hfta_optim_for, get_hfta_lr_scheduler_for
 from hfta.workflow import EpochTimer
+from datasets import Corpus
 
 try:
   import torch_xla
@@ -20,23 +37,18 @@ try:
 except ImportError:
   pass
 
-import data
 import model as Model
 
 
 def attach_config_args(parser=argparse.ArgumentParser()):
-  parser.add_argument(
-      '--epochs',
-      type=int,
-      default=250,
-      help='number of epochs to train for',
-  )
-  parser.add_argument(
-      '--iters-per-epoch',
-      type=int,
-      default=float('inf'),
-      help='number of epochs to train for',
-  )
+  parser.add_argument('--epochs',
+                      type=int,
+                      default=250,
+                      help='number of epochs to train for')
+  parser.add_argument('--iters-per-epoch',
+                      type=int,
+                      default=float('inf'),
+                      help='number of epochs to train for')
   parser.add_argument('--batch_size',
                       type=int,
                       default=32,
@@ -66,37 +78,24 @@ def attach_config_args(parser=argparse.ArgumentParser()):
   parser.add_argument('--outf', type=str, default=None, help='output folder')
   parser.add_argument('--model', type=str, default='', help='model path')
   parser.add_argument('--dataset', type=str, required=True, help="dataset path")
-  parser.add_argument(
-      '--device',
-      type=str,
-      default='cuda',
-      choices=['cpu', 'cuda', 'xla'],
-      help="the device where this test is running",
-  )
-  parser.add_argument(
-      '--hfta',
-      default=False,
-      action='store_true',
-      help='use HFTA',
-  )
-  parser.add_argument(
-      '--amp',
-      default=False,
-      action='store_true',
-      help='Enable AMP; only used when --device is cuda',
-  )
-  parser.add_argument(
-      '--eval',
-      default=False,
-      action='store_true',
-      help='run the evaluation loop',
-  )
-  parser.add_argument(
-      '--seed',
-      type=int,
-      help='Seed',
-      default=1117,
-  )
+  parser.add_argument('--device',
+                      type=str,
+                      default='cuda',
+                      choices=['cpu', 'cuda', 'xla'],
+                      help="the device where this test is running")
+  parser.add_argument('--hfta',
+                      default=False,
+                      action='store_true',
+                      help='use HFTA')
+  parser.add_argument('--amp',
+                      default=False,
+                      action='store_true',
+                      help='Enable AMP; only used when --device is cuda')
+  parser.add_argument('--eval',
+                      default=False,
+                      action='store_true',
+                      help='run the evaluation loop')
+  parser.add_argument('--seed', type=int, help='Seed', default=1117)
   parser.add_argument('--log-interval',
                       type=int,
                       default=50,
@@ -107,11 +106,7 @@ def attach_config_args(parser=argparse.ArgumentParser()):
       default=False,
       action='store_true',
       help='go over the training and validation loops without performing '
-      'forward and backward passes',
-  )
-  parser.add_argument('--dry-run',
-                      action='store_true',
-                      help='verify the code and the model')
+      'forward and backward passes')
   return parser
 
 
@@ -135,19 +130,10 @@ def attach_fusible_args(parser=argparse.ArgumentParser()):
   return parser
 
 
-def attach_nonfusible_args(parser=argparse.ArgumentParser()):
-  parser.add_argument('--clip',
-                      type=float,
-                      default=0.5,
-                      help='gradient clipping')
-  return parser
-
-
 def attach_args(
     parser=argparse.ArgumentParser(description='PyTorch Bert Language Model')):
   attach_config_args(parser)
   attach_fusible_args(parser)
-  attach_nonfusible_args(parser)
   return parser
 
 
@@ -276,17 +262,11 @@ def train(args, model, train_data, optimizer, epoch, B, scaler=None):
         output = output.view(-1, ntokens)
         if args.amp:
           assert scaler is not None
-        if B > 0:
-          loss = B * F.nll_loss(output, targets)
-        else:
-          loss = F.nll_loss(output, targets)
+        loss = max(B, 1) * F.nll_loss(output, targets)
     else:
       output = model(data, pos)
       output = output.view(-1, ntokens)
-      if B > 0:
-        loss = B * F.nll_loss(output, targets)
-      else:
-        loss = F.nll_loss(output, targets)
+      loss = max(B, 1) * F.nll_loss(output, targets)
 
     if scaler is not None:
       scaler.scale(loss).backward()
@@ -304,6 +284,7 @@ def train(args, model, train_data, optimizer, epoch, B, scaler=None):
     if scaler is not None:
       scaler.update()
 
+    num_samples_per_epoch += args.batch_size * max(B, 1)
     if batch_idx % args.log_interval == 0 and batch_idx > 0:
       with torch.no_grad():
         cur_loss = F.nll_loss(output, targets.contiguous(),
@@ -315,9 +296,6 @@ def train(args, model, train_data, optimizer, epoch, B, scaler=None):
                              len(train_data[0]) // args.bptt,
                              elapsed * 1000 / args.log_interval, loss_str))
       start_time = time.time()
-      num_samples_per_epoch += args.batch_size * max(B, 1)
-    if args.dry_run:
-      break
 
   return num_samples_per_epoch
 
@@ -338,7 +316,7 @@ B = len(args.lr) if args.hfta else 0
 ###############################################################################
 # Load data
 ###############################################################################
-corpus = data.Corpus(args.dataset, args.max_token)
+corpus = Corpus(args.dataset, args.max_token, True)
 train_data = batchify(corpus.train, args.batch_size)
 val_data = batchify(corpus.valid, args.batch_size)
 test_data = batchify(corpus.test, args.batch_size)
@@ -353,17 +331,12 @@ model = Model.BERT(ntokens,
                    args.nhead,
                    args.dropout,
                    B=B).to(device)
-# if B ==0:
-#   summary(model, [(32,), (32,)])
-# else:
-#   summary(model, (B, 32, 32))
 
 if args.device == 'cuda' and args.amp:
   scaler = amp.GradScaler()
 else:
   scaler = None
 
-# Loop over epochs.
 optimizer = get_hfta_optim_for(optim.Adadelta, B=B)(
     model.parameters(),
     lr=args.lr if B > 0 else args.lr[0],
@@ -381,27 +354,24 @@ epoch_timer = EpochTimer()
 print("start training!")
 # At any point you can hit Ctrl + C to break out of training early.
 try:
-  val_loss = evaluate(args, model, val_data, B=B)
-  for epoch in range(1, args.epochs + 1):
+  for epoch in range(args.epochs):
     epoch_timer.epoch_start(epoch)
     num_samples_per_epoch = train(args,
                                   model,
                                   train_data,
                                   optimizer,
                                   epoch,
-                                  B=B,
+                                  B,
                                   scaler=scaler)
     scheduler.step()
     epoch_timer.epoch_stop(num_samples_per_epoch)
     print('Epoch {} took {} s!'.format(epoch, epoch_timer.epoch_latency(epoch)))
-# val_loss = evaluate(args, model, val_data, B=B)
+  if args.eval:
+    val_loss = evaluate(args, model, val_data, B=B)
+
+  if args.device == 'xla':
+    print(met.metrics_report())
+  if args.outf is not None:
+    epoch_timer.to_csv(args.outf)
 except KeyboardInterrupt:
   print('Exiting from training early')
-
-if args.device == 'xla':
-  print(met.metrics_report())
-if args.outf is not None:
-  epoch_timer.to_csv(args.outf)
-
-# Run on test data.
-# test_loss = evaluate(args, model, test_data, B=B)

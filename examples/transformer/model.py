@@ -1,29 +1,27 @@
-import math, sys
+import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from hfta.hfta_ops.MultiheadAttention import MultiheadAttention
-
-from hfta.ops import convert_ops, get_hfta_op_for
+from hfta.ops import convert_ops, get_hfta_op_for, MultiheadAttention
 
 
 # Temporarily leave PositionalEncoding module here. Will be moved somewhere else.
 class PositionalEncoding(nn.Module):
-  r"""Inject some information about the relative or absolute position of the tokens
-        in the sequence. The positional encodings have the same dimension as
-        the embeddings, so that the two can be summed. Here, we use sine and cosine
-        functions of different frequencies.
-    .. math::
-        \text{PosEncoder}(pos, 2i) = sin(pos/10000^(2i/d_model))
-        \text{PosEncoder}(pos, 2i+1) = cos(pos/10000^(2i/d_model))
-        \text{where pos is the word position and i is the embed idx)
-    Args:
-        d_model: the embed dim (required).
-        dropout: the dropout value (default=0.1).
-        max_len: the max. length of the incoming sequence (default=5000).
-    Examples:
-        >>> pos_encoder = PositionalEncoding(d_model)
-    """
+  """Inject some information about the relative or absolute position of the tokens
+      in the sequence. The positional encodings have the same dimension as
+      the embeddings, so that the two can be summed. Here, we use sine and cosine
+      functions of different frequencies.
+  .. math::
+      \text{PosEncoder}(pos, 2i) = sin(pos/10000^(2i/d_model))
+      \text{PosEncoder}(pos, 2i+1) = cos(pos/10000^(2i/d_model))
+      \text{where pos is the word position and i is the embed idx)
+  Args:
+      d_model: the embed dim (required).
+      dropout: the dropout value (default=0.1).
+      max_len: the max. length of the incoming sequence (default=5000).
+  Examples:
+      >>> pos_encoder = PositionalEncoding(d_model)
+  """
 
   def __init__(self, d_model, dropout=0.1, max_len=5000, B=1):
     super(PositionalEncoding, self).__init__()
@@ -39,15 +37,15 @@ class PositionalEncoding(nn.Module):
     self.register_buffer('pe', pe)
 
   def forward(self, x):
-    r"""Inputs of forward function
-        Args:
-            x: the sequence fed to the positional encoder model (required).
-        Shape:
-            x: [sequence length, batch size, B, embed dim]
-            output: [sequence length, batch size, embed dim]
-        Examples:
-            >>> output = pos_encoder(x)
-        """
+    """Inputs of forward function
+    Args:
+        x: the sequence fed to the positional encoder model (required).
+    Shape:
+        x: [sequence length, batch size, B, embed dim]
+        output: [sequence length, batch size, embed dim]
+    Examples:
+        >>> output = pos_encoder(x)
+    """
     if self.B > 0:
       x = x + self.pe[:, :x.size(-2)].unsqueeze(0)
     else:
@@ -60,12 +58,9 @@ class TransformerModel(nn.Module):
 
   def __init__(self, ntoken, ninp, nhead, nhid, nlayers, dropout=0.5, B=1):
     super(TransformerModel, self).__init__()
-    try:
-      from torch.nn import TransformerEncoder  #, TransformerEncoderLayer
-    except:
-      raise ImportError(
-          'TransformerEncoder module does not exist in PyTorch 1.1 or lower.')
-    Embedding, Linear = convert_ops(B, nn.Embedding, nn.Linear)
+    Embedding, Linear, TransformerEncoder = convert_ops(B, nn.Embedding,
+                                                        nn.Linear,
+                                                        nn.TransformerEncoder)
     self.model_type = 'Transformer'
     self.src_mask = None
     self.B = B
@@ -119,25 +114,25 @@ def _get_activation_fn(activation):
 
 
 class TransformerEncoderLayer(torch.nn.Module):
-  r"""TransformerEncoderLayer is made up of self-attn and feedforward network.
-    This standard encoder layer is based on the paper "Attention Is All You Need".
-    Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N Gomez,
-    Lukasz Kaiser, and Illia Polosukhin. 2017. Attention is all you need. In Advances in
-    Neural Information Processing Systems, pages 6000-6010. Users may modify or implement
-    in a different way during application.
+  """TransformerEncoderLayer is made up of self-attn and feedforward network.
+  This standard encoder layer is based on the paper "Attention Is All You Need".
+  Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N Gomez,
+  Lukasz Kaiser, and Illia Polosukhin. 2017. Attention is all you need. In Advances in
+  Neural Information Processing Systems, pages 6000-6010. Users may modify or implement
+  in a different way during application.
 
-    Args:
-        d_model: the number of expected features in the input (required).
-        nhead: the number of heads in the multiheadattention models (required).
-        dim_feedforward: the dimension of the feedforward network model (default=2048).
-        dropout: the dropout value (default=0.1).
-        activation: the activation function of intermediate layer, relu or gelu (default=relu).
+  Args:
+      d_model: the number of expected features in the input (required).
+      nhead: the number of heads in the multiheadattention models (required).
+      dim_feedforward: the dimension of the feedforward network model (default=2048).
+      dropout: the dropout value (default=0.1).
+      activation: the activation function of intermediate layer, relu or gelu (default=relu).
 
-    Examples::
-        >>> encoder_layer = nn.TransformerEncoderLayer(d_model=512, nhead=8)
-        >>> src = torch.rand(10, 32, 512)
-        >>> out = encoder_layer(src)
-    """
+  Examples::
+      >>> encoder_layer = nn.TransformerEncoderLayer(d_model=512, nhead=8)
+      >>> src = torch.rand(10, 32, 512)
+      >>> out = encoder_layer(src)
+  """
 
   def __init__(self,
                d_model,
@@ -171,16 +166,16 @@ class TransformerEncoderLayer(torch.nn.Module):
     super(TransformerEncoderLayer, self).__setstate__(state)
 
   def forward(self, src, src_mask=None, src_key_padding_mask=None):
-    r"""Pass the input through the encoder layer.
+    """Pass the input through the encoder layer.
 
-        Args:
-            src: the sequence to the encoder layer (required).
-            src_mask: the mask for the src sequence (optional).
-            src_key_padding_mask: the mask for the src keys per batch (optional).
+    Args:
+        src: the sequence to the encoder layer (required).
+        src_mask: the mask for the src sequence (optional).
+        src_key_padding_mask: the mask for the src keys per batch (optional).
 
-        Shape:
-            see the docs in Transformer class.
-        """
+    Shape:
+        see the docs in Transformer class.
+    """
     src2 = self.self_attn(src,
                           src,
                           src,

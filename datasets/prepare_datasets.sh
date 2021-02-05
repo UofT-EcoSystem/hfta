@@ -10,6 +10,16 @@ _download_shapenet() {
   fi
 }
 
+_download_wikitext2() {
+  if [ ! -d "datasets/wikitext-2" ]; then
+    local url=https://s3.amazonaws.com/research.metamind.io/wikitext/wikitext-2-v1.zip
+    local zip_path=datasets/wikitext-2-v1.zip
+    wget ${url} --no-check-certificate -O ${zip_path}
+    unzip -q ${zip_path} -d datasets/
+    rm -rf ${zip_path}
+  fi
+}
+
 prepare_pointnet_cls() {
   _download_shapenet
   python examples/pointnet/train_classification.py \
@@ -57,4 +67,12 @@ prepare_dcgan() {
   unzip bedroom_val_lmdb.zip
   cd ../../
   echo "Lsun dataset have been downloaded and setup!"
+}
+
+prepare_bert() {
+  _download_wikitext2
+}
+
+prepare_transformer() {
+  _download_wikitext2
 }

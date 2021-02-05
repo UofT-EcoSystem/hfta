@@ -38,21 +38,6 @@ _workflow_pointnet () {
     return -1
   fi
 
-  if [ "${DEVICE}" == "cuda" ]; then
-    if [ "${DEVICE_MODEL}" == "a100" ]; then
-      local modes_flag="--modes serial concurrent mps hfta mig"
-    else
-      local modes_flag="--modes serial concurrent mps hfta"
-    fi
-  elif [ "${DEVICE}" == "xla" ]; then
-    local modes_flag="--modes serial hfta"
-  elif [ "${DEVICE}" == "cpu" ]; then
-    local modes_flag="--modes serial concurrent hfta"
-  else
-    echo "Unknown device: ${DEVICE} !"
-    return -1
-  fi
-
   local i
   for ((i=0; i<${repeats}; i++)); do
     python benchmarks/pointnet.py \
@@ -61,7 +46,6 @@ _workflow_pointnet () {
       --iters-per-epoch 1000 \
       --dataroot datasets/shapenetcore_partanno_segmentation_benchmark_v0/ \
       --task ${task} \
-      ${modes_flag} \
       --device ${DEVICE} \
       --device-model ${DEVICE_MODEL}
   done
@@ -120,4 +104,3 @@ plot_pointnet_seg () {
     _plot_dcgm_pointnet seg
   fi
 }
-

@@ -1,23 +1,38 @@
+# Copyright (c) 2020-     UofT-EcoSystem,
+# Copyright 2018 - 2019 Junseong Kim, Scatter Lab, respective BERT contributors
+# Copyright (c) 2018 Alexander Rush : The Annotated Trasnformer
+#
+#    Licensed under the Apache License, Version 2.0 (the "License");
+#    you may not use this file except in compliance with the License.
+#    You may obtain a copy of the License at
+#
+#        http://www.apache.org/licenses/LICENSE-2.0
+#
+#    Unless required by applicable law or agreed to in writing, software
+#    distributed under the License is distributed on an "AS IS" BASIS,
+#    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#    See the License for the specific language governing permissions and
+#    limitations under the License.
+
 import torch.nn as nn
 
-from hfta.hfta_ops.MultiheadAttention import MultiheadAttention
 from .utils import SublayerConnection, PositionwiseFeedForward
-from hfta.ops import get_hfta_op_for
+from hfta.ops import get_hfta_op_for, MultiheadAttention
 
 
 class TransformerBlock(nn.Module):
   """
     Bidirectional Encoder = Transformer (self-attention)
     Transformer = MultiHead_Attention + Feed_Forward with sublayer connection
-    """
+  """
 
   def __init__(self, hidden, attn_heads, feed_forward_hidden, dropout, B=1):
     """
-        :param hidden: hidden size of transformer
-        :param attn_heads: head sizes of multi-head attention
-        :param feed_forward_hidden: feed_forward_hidden, usually 4*hidden_size
-        :param dropout: dropout rate
-        """
+      :param hidden: hidden size of transformer
+      :param attn_heads: head sizes of multi-head attention
+      :param feed_forward_hidden: feed_forward_hidden, usually 4*hidden_size
+      :param dropout: dropout rate
+    """
 
     super().__init__()
     self.attention = MultiheadAttention(hidden, attn_heads, B=B)
