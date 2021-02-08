@@ -61,11 +61,12 @@ class Embedding(Module):
     assert self.B == input.shape[0], \
       "input should have shape [{}, N, *]".format(self.B)
     self.addition = self.addition.to(input.device)
-    addition_shape = [self.B] +([1] * (input.dim() - 1))
+    addition_shape = [self.B] + ([1] * (input.dim() - 1))
     addition = self.addition.view(addition_shape)
     new_input = (input + addition)
-    res = F.embedding(new_input, self.weight.view(-1, self.embedding_dim), self.padding_idx,
-                      self.max_norm, self.norm_type, self.scale_grad_by_freq, self.sparse)
+    res = F.embedding(new_input, self.weight.view(-1, self.embedding_dim),
+                      self.padding_idx, self.max_norm, self.norm_type,
+                      self.scale_grad_by_freq, self.sparse)
     return res
 
   def extra_repr(self) -> str:

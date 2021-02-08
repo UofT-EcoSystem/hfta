@@ -9,7 +9,8 @@ from .batchnorm import BatchNorm1d, BatchNorm2d
 from .utils import testcase_automator
 from .embedding import Embedding
 from .layernorm import LayerNorm
-from .MultiheadAttention import MultiheadAttention
+from .multiheadattention import MultiheadAttention
+from .transformerencoderlayer import TransformerEncoderLayer
 
 _OPS_MAP = {
     torch.nn.Conv1d: Conv1d,
@@ -23,6 +24,7 @@ _OPS_MAP = {
     torch.nn.BatchNorm2d: BatchNorm2d,
     torch.nn.LayerNorm: LayerNorm,
     torch.nn.Embedding: Embedding,
+    torch.nn.TransformerEncoderLayer: TransformerEncoderLayer,
 }
 
 _HFTA_TORCH_IDENTICAL_OPS = {

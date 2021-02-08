@@ -20,8 +20,8 @@ class MultiheadAttention(nn.Module):
       raise ValueError(
           '`in_features`({}) should be divisible by `head_num`({})'.format(
               embed_dim, num_heads))
-    from hfta.ops import get_hfta_op_for
-    Linear = get_hfta_op_for(nn.Linear, B=B)
+    from .linear import Linear
+    Linear = nn.Linear if B == 0 else functools.partial(Linear, B=B)
     self.embed_dim = embed_dim
     self.num_heads = num_heads
     self.B = B

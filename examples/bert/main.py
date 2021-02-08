@@ -284,7 +284,7 @@ def train(args, model, train_data, optimizer, epoch, B, scaler=None):
     if scaler is not None:
       scaler.update()
 
-    num_samples_per_epoch += args.batch_size * max(B, 1)
+    num_samples_per_epoch += data.size(0) * max(B, 1)
     if batch_idx % args.log_interval == 0 and batch_idx > 0:
       with torch.no_grad():
         cur_loss = F.nll_loss(output, targets.contiguous(),
@@ -352,26 +352,22 @@ print("NVIDIA_TF32_OVERRIDE: {}".format(os.environ.get('NVIDIA_TF32_OVERRIDE')))
 
 epoch_timer = EpochTimer()
 print("start training!")
-# At any point you can hit Ctrl + C to break out of training early.
-try:
-  for epoch in range(args.epochs):
-    epoch_timer.epoch_start(epoch)
-    num_samples_per_epoch = train(args,
-                                  model,
-                                  train_data,
-                                  optimizer,
-                                  epoch,
-                                  B,
-                                  scaler=scaler)
-    scheduler.step()
-    epoch_timer.epoch_stop(num_samples_per_epoch)
-    print('Epoch {} took {} s!'.format(epoch, epoch_timer.epoch_latency(epoch)))
-  if args.eval:
-    val_loss = evaluate(args, model, val_data, B=B)
+for epoch in range(args.epochs):
+  epoch_timer.epoch_start(epoch)
+  num_samples_per_epoch = train(args,
+                                model,
+                                train_data,
+                                optimizer,
+                                epoch,
+                                B,
+                                scaler=scaler)
+  scheduler.step()
+  epoch_timer.epoch_stop(num_samples_per_epoch)
+  print('Epoch {} took {} s!'.format(epoch, epoch_timer.epoch_latency(epoch)))
+if args.eval:
+  val_loss = evaluate(args, model, val_data, B=B)
 
-  if args.device == 'xla':
-    print(met.metrics_report())
-  if args.outf is not None:
-    epoch_timer.to_csv(args.outf)
-except KeyboardInterrupt:
-  print('Exiting from training early')
+if args.device == 'xla':
+  print(met.metrics_report())
+if args.outf is not None:
+  epoch_timer.to_csv(args.outf)
