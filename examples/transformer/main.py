@@ -2,6 +2,7 @@
 import argparse
 import time
 import os
+import sys
 import torch
 import torch.nn.functional as F
 import torch.onnx
@@ -12,7 +13,6 @@ import torch.backends.cudnn as cudnn
 import torch.cuda.amp as amp
 from hfta.optim import get_hfta_optim_for, get_hfta_lr_scheduler_for
 from hfta.workflow import EpochTimer
-from datasets import Corpus
 
 try:
   import torch_xla
@@ -282,6 +282,8 @@ B = len(args.lr) if args.hfta else 0
 ###############################################################################
 # Load data
 ###############################################################################
+sys.path.append(os.path.join(args.dataset, os.pardir))
+from corpus import Corpus
 corpus = Corpus(args.dataset, args.max_token)
 train_data = batchify(corpus.train, args.batch_size)
 val_data = batchify(corpus.valid, args.batch_size)
