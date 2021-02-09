@@ -66,7 +66,7 @@ class TransformerModel(nn.Module):
     self.src_mask = None
     self.B = B
     self.pos_encoder = PositionalEncoding(ninp, dropout, B=B)
-    encoder_layers = TransformerEncoderLayer(ninp, nhead, nhid, dropout)
+    encoder_layers = TransformerEncoderLayer(ninp, nhead, nhid, dropout, B=B)
     self.transformer_encoder = TransformerEncoder(encoder_layers, nlayers)
     self.encoder = Embedding(ntoken, ninp)
     self.ninp = ninp
