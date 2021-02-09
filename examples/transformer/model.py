@@ -2,7 +2,7 @@ import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from hfta.ops import convert_ops, get_hfta_op_for, MultiheadAttention
+from hfta.ops import convert_ops, get_hfta_op_for, MultiheadAttention, TransformerEncoderLayer
 
 
 # Temporarily leave PositionalEncoding module here. Will be moved somewhere else.
@@ -58,9 +58,10 @@ class TransformerModel(nn.Module):
 
   def __init__(self, ntoken, ninp, nhead, nhid, nlayers, dropout=0.5, B=1):
     super(TransformerModel, self).__init__()
-    Embedding, Linear, TransformerEncoder, TransformerEncoderLayer = convert_ops(
-      B, nn.Embedding, nn.Linear, nn.TransformerEncoder,
-      nn.TransformerEncoderLayer)
+
+    Embedding, Linear, TransformerEncoder = convert_ops(B, nn.Embedding,
+                                                        nn.Linear,
+                                                        nn.TransformerEncoder)
     self.model_type = 'Transformer'
     self.src_mask = None
     self.B = B

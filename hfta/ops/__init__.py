@@ -24,7 +24,6 @@ _OPS_MAP = {
     torch.nn.BatchNorm2d: BatchNorm2d,
     torch.nn.LayerNorm: LayerNorm,
     torch.nn.Embedding: Embedding,
-    torch.nn.TransformerEncoderLayer: TransformerEncoderLayer,
 }
 
 _HFTA_TORCH_IDENTICAL_OPS = {

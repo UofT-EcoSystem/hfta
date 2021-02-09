@@ -3,7 +3,6 @@ import torch
 import torch.nn as nn
 
 from hfta.ops import MultiheadAttention, testcase_automator
-from hfta.datasets import Cropus
 
 
 def _generate_square_subsequent_mask(sz):
