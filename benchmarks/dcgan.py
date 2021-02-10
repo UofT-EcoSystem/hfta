@@ -1,3 +1,4 @@
+
 import argparse
 import logging
 import os
@@ -85,6 +86,9 @@ def main(args):
       precs=args.precs,
       modes=args.modes,
       enable_dcgm=args.enable_dcgm,
+      enable_tpu_profiler=args.enable_tpu_profiler,
+      tpu_profiler_waittime=10,
+      tpu_profiler_duration=10,
       epochs=args.epochs,
       iters_per_epoch=args.iters_per_epoch,
       concurrent_runner_kwargs=args.concurrent_runner_kwargs,
@@ -133,3 +137,4 @@ if __name__ == '__main__':
   args.outdir_root = os.path.abspath(os.path.expanduser(args.outdir_root))
   args.dataroot = os.path.abspath(os.path.expanduser(args.dataroot))
   main(args)
+© 2021 GitHub, Inc.

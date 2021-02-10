@@ -13,6 +13,15 @@ _plot_dcgm_dcgan() {
     --plot
 }
 
+_plot_tpu_profile_dcgan() {
+  local all_outdirs="$(gsutil ls -d ${STORAGE_BUCKET}/dcgan/run*/)"
+  local outdir_arr=($all_outdirs)
+  tpu_profile_parser \
+    --outdirs ${outdir_arr[@]} \
+    --savedir ${OUTDIR_ROOT}/dcgan/tpuprofile-${DEVICE}-${DEVICE_MODEL}/ \
+    --plot
+}
+
 _plot_speedups_dcgan() {
   local outdirs=()
   for outdir in ${OUTDIR_ROOT}/dcgan/run*/
@@ -65,14 +74,15 @@ workflow_dcgan () {
       ${modes_flag} \
       --dataroot ${dataroot} \
       --device ${DEVICE} \
-      --device-model ${DEVICE_MODEL}
+      --device-model ${DEVICE_MODEL} \
+      --enable-tpu-profiler
   done
 
   if [ "${DEVICE}" == "cuda" ]; then
     local modes=("mps" "concurrent")
   elif [ "${DEVICE}" == "cpu" ]; then
     local modes=("concurrent")
-  else
+  else  # xla will return
     return 0
   fi
 
@@ -101,5 +111,8 @@ plot_dcgan () {
   _plot_speedups_dcgan
   if [ "${DEVICE}" == "cuda" ]; then
     _plot_dcgm_dcgan
+  elif [ "${DEVICE}" == "xla" ]; then
+    _plot_tpu_profile_dcgan
   fi
 }
+

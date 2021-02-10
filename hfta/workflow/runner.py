@@ -313,7 +313,7 @@ class ConcurrentRunner(HardwareSharingRunner):
 
   def __init__(
       self,
-      dry_run_repeats=2,
+      dry_run_repeats=10,
       max_num_Bs=5,
       lambd=4.0,
       dry_run_epochs=2,

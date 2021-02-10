@@ -90,6 +90,8 @@ def main(args):
       modes=args.modes,
       enable_dcgm=args.enable_dcgm,
       enable_tpu_profiler=args.enable_tpu_profiler,
+      tpu_profiler_waittime=10,
+      tpu_profiler_duration=5,
       epochs=args.epochs,
       iters_per_epoch=args.iters_per_epoch,
       concurrent_runner_kwargs=args.concurrent_runner_kwargs,
