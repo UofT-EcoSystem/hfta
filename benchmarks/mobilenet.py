@@ -21,15 +21,19 @@ def main(args):
   ):
     cmd = [
         'python',
-        'train_{}.py'.format('classification' if args.task ==
-                             'cls' else 'segmentation'),
+        'main.py',
+        '--version',
+        args.version,
         '--dataset',
+        args.dataset,
+        '--dataroot',
         args.dataroot,
-        '--feature_transform',
         '--epochs',
         str(epochs),
         '--iters-per-epoch',
         str(iters_per_epoch),
+        '--batch-size',
+        str(args.batch_size),
         '--device',
         device,
     ]
@@ -72,7 +76,7 @@ def main(args):
           check=True,
           cwd=os.path.join(
               os.path.abspath(os.path.expanduser(os.path.dirname(__file__))),
-              '../examples/pointnet/',
+              '../examples/mobilenet/',
           ),
           env=env_map,
       )
@@ -85,13 +89,10 @@ def main(args):
       trial_func=trial,
       device=args.device,
       device_model=args.device_model,
-      outdir_prefix=os.path.join(args.outdir_root, args.task),
+      outdir_prefix=os.path.join(args.outdir_root, args.dataset, args.version),
       precs=args.precs,
       modes=args.modes,
       enable_dcgm=args.enable_dcgm,
-      enable_tpu_profiler=args.enable_tpu_profiler,
-      tpu_profiler_waittime=10,
-      tpu_profiler_duration=10,
       epochs=args.epochs,
       iters_per_epoch=args.iters_per_epoch,
       concurrent_runner_kwargs=args.concurrent_runner_kwargs,
@@ -104,7 +105,7 @@ def main(args):
     logging.error('Failed!')
 
 
-def attach_args(parser=argparse.ArgumentParser('PointNet Benchmark Workflow')):
+def attach_args(parser=argparse.ArgumentParser('MobilNet Benchmark Workflow')):
   parser.add_argument(
       '--outdir_root',
       type=str,
@@ -124,18 +125,29 @@ def attach_args(parser=argparse.ArgumentParser('PointNet Benchmark Workflow')):
       help='number of iterations per epochs',
   )
   parser.add_argument(
+      '--batch-size',
+      type=int,
+      default=1024,
+      help='batch size for the training',
+  )
+  parser.add_argument(
       '--dataroot',
       type=str,
       required=True,
-      help='path to the shapenet parts dataset',
+      help='path to the imagenet or cifar10 dataset',
   )
   parser.add_argument(
-      '--task',
+      '--dataset',
       type=str,
       required=True,
-      choices=['cls', 'seg'],
-      help='pointnet classification or segmentation task',
+      choices=['imagenet', 'cifar10'],
+      help='Use imagenet or cifar10 to train MobileNet',
   )
+  parser.add_argument('--version',
+                      type=str,
+                      required=True,
+                      choices=['v2', 'v3s', 'v3l'],
+                      help='version of the MobileNet')
   parser = attach_workflow_args(parser)
   return parser
 
