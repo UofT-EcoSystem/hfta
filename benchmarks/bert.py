@@ -1,4 +1,3 @@
-
 import argparse
 import logging
 import os
@@ -25,8 +24,6 @@ def main(args):
         'main.py',
         '--dataset',
         args.dataroot,
-        '--dataset_type',
-        'lsun',
         '--epochs',
         str(epochs),
         '--iters-per-epoch',
@@ -41,8 +38,9 @@ def main(args):
 
     num_hps = max(B, 1)
     hyperparam_strs = {
-        'lr': [str(random.uniform(0.0001, 0.001)) for _ in range(num_hps)],
-        'beta1': [str(random.uniform(0.3, 0.99)) for _ in range(num_hps)],
+        'lr': [str(random.uniform(0.1, 10)) for _ in range(num_hps)],
+        'gamma': [str(random.uniform(0.3, 0.99)) for _ in range(num_hps)],
+        'step_size': [str(int(random.uniform(3, 20))) for _ in range(num_hps)],
     }
 
     for flag, vals in hyperparam_strs.items():
@@ -69,7 +67,7 @@ def main(args):
           check=True,
           cwd=os.path.join(
               os.path.abspath(os.path.expanduser(os.path.dirname(__file__))),
-              '../examples/dcgan/',
+              '../examples/bert/',
           ),
           env=env_map,
       )

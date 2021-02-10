@@ -46,7 +46,6 @@ _workflow_pointnet () {
       --iters-per-epoch 1000 \
       --dataroot datasets/shapenetcore_partanno_segmentation_benchmark_v0/ \
       --task ${task} \
-      ${modes_flag} \
       --device ${DEVICE} \
       --device-model ${DEVICE_MODEL} \
       --enable-tpu-profiler
