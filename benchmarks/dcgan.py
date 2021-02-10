@@ -137,4 +137,3 @@ if __name__ == '__main__':
   args.outdir_root = os.path.abspath(os.path.expanduser(args.outdir_root))
   args.dataroot = os.path.abspath(os.path.expanduser(args.dataroot))
   main(args)
-© 2021 GitHub, Inc.
