@@ -7,7 +7,7 @@ import random
 import subprocess
 import sys
 from pathlib import Path
-from pprint import pprint
+import logging 
 
 from hyperopt import hp
 from hyperopt.pyll.stochastic import sample
@@ -99,8 +99,25 @@ def main(args):
       logging.error(e)
       succeeded = False
     return succeeded
- 
-  pochs = int(round(epochs))
+   
+  def try_params(ids, epochs, params, env_vars=None):
+    """ Running the training process for pointnet classification task.
+
+    Args:
+      ids: Either a single int ID (for serial), or a list of IDs (for HFTA).
+      epochs: number of epochs to run.
+      params: maps hyperparameter name to its value(s). For HFTA, the values are
+        provided as a list.
+      env_vars: optional, dict(str, str) that includes extra environment that
+        needs to be forwarded to the subprocess call
+
+    Returns:
+      result(s): A single result dict for serial or a list of result dicts for
+        HFTA in the same order as ids.
+      early_stop(s): Whether the training process early stopped. A single bool
+        for serial or a list of bools for HFTA in the same order as ids.
+    """
+    epochs = int(round(epochs))
     ids_str = (','.join([str(i) for i in ids]) if isinstance(
         ids,
         (list, tuple),
@@ -217,5 +234,5 @@ if __name__ == '__main__':
   rearrange_algorithm_kwargs(args)
   logging.basicConfig(level=extract_logging_level(args))
   args.outdir = os.path.abspath(os.path.expanduser(args.outdir))
-  args.dataset = os.path.abspath(os.path.expanduser(args.dataset))
+  args.dataroot = os.path.abspath(os.path.expanduser(args.dataroot))
   main(args)

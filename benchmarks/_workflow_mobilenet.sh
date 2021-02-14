@@ -2,7 +2,6 @@
 
 _mobilenet_warmup_data() {
   local dataset=$1
-  local version=$2
 
   if [ "${dataset}" == "imagenet" ] || [ "${dataset}" == "cifar10" ]; then
     python examples/mobilenet/main.py \

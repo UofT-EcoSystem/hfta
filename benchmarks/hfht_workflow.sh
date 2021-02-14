@@ -4,7 +4,8 @@ DEVICE=${1:-"cuda"}
 DEVICE_MODEL=${2:-"v100"}
 OUTDIR_ROOT=${3:-"benchmarks/hfht"}
 
-source benchmarks/utils.sh
+source benchmarks/_workflow_pointnet.sh
+source benchmarks/_workflow_mobilenet.sh
 
 _get_modes() {
   if [ "${DEVICE}" == "cuda" ]; then
@@ -76,4 +77,17 @@ hfht_workflow_pointnet_cls() {
   echo "Warmup ..."
   _pointnet_warmup_data cls
   _sweep "${base_cmd}" ${OUTDIR_ROOT}/pointnet_cls ${repeats}
+}
+
+
+hfht_workflow_mobilenet_cifar10() {
+  local repeats=${1:-"3"}
+  local base_cmd="\
+    python examples/hfht/mobilenet.py \
+    --dataset cifar10 \
+    --dataroot datasets/cifar10 \
+    --device ${DEVICE}"
+  echo "Warmup ..."
+  _mobilenet_warmup_data cifar10
+  _sweep "${base_cmd}" ${OUTDIR_ROOT}/pointnet_cifar10 ${repeats}
 }
