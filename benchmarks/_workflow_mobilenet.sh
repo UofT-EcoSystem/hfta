@@ -44,7 +44,7 @@ _workflow_mobilenet() {
       --outdir_root ${OUTDIR_ROOT}/mobilenet/run${i}/ \
       --epochs ${epochs} \
       --iters-per-epoch ${exp_iters} \
-      --batch-size ${batch_size} \
+      --batch_size ${batch_size} \
       --dataroot ./datasets/${dataset} \
       --device ${DEVICE} \
       --device-model ${DEVICE_MODEL} \

@@ -32,7 +32,7 @@ def main(args):
         str(epochs),
         '--iters-per-epoch',
         str(iters_per_epoch),
-        '--batch-size',
+        '--batch_size',
         str(args.batch_size),
         '--device',
         device,
@@ -128,7 +128,7 @@ def attach_args(parser=argparse.ArgumentParser('MobilNet Benchmark Workflow')):
       help='number of iterations per epochs',
   )
   parser.add_argument(
-      '--batch-size',
+      '--batch_size',
       type=int,
       default=1024,
       help='batch size for the training',

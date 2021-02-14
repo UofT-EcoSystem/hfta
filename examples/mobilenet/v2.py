@@ -261,7 +261,7 @@ class MobileNetV2(nn.Module):
     # This exists since TorchScript doesn't support inheritance, so the superclass method
     # (this one) needs to have a name other than `forward` that can be accessed in a subclass
     x = self.features(x)
-    # Cannot use "squeeze" as batch-size can be 1 => must use reshape with x.shape[0]
+    # Cannot use "squeeze" as batch_size can be 1 => must use reshape with x.shape[0]
     x = self.avg_pool(x)
     if self.B > 0:
       x = x.transpose(0, 1)
