@@ -5,7 +5,8 @@ from torch.optim import Optimizer
 
 from .utils import (_validate_range, _broadcastablize,
                     _move_coeff_to_same_device, _reduce_array_if_possible_for,
-                    _zero_grad_if_cuda)
+                    _zero_grad_if_cuda, index_array_or_return_scalar)
+from .partial import PartiallyFusedOptimizer
 
 
 class Adam(Optimizer):
@@ -174,3 +175,41 @@ class Adam(Optimizer):
           p.addcdiv_(exp_avg, denom, value=-step_size)
 
     return loss
+
+
+class PartiallyFusedAdam(PartiallyFusedOptimizer):
+
+  def __init__(
+      self,
+      fused_params,
+      unfused_params,
+      lr=1e-3,
+      betas=(0.9, 0.999),
+      eps=1e-8,
+      weight_decay=0,
+      amsgrad=False,
+      B=1,
+  ):
+    fused_adam = Adam(
+        fused_params,
+        lr=lr,
+        betas=betas,
+        eps=eps,
+        weight_decay=weight_decay,
+        amsgrad=amsgrad,
+        B=B,
+    )
+    unfused_adams = [
+        torch.optim.Adam(
+            params,
+            lr=index_array_or_return_scalar(lr, b),
+            betas=(
+                index_array_or_return_scalar(betas[0], b),
+                index_array_or_return_scalar(betas[1], b),
+            ),
+            eps=index_array_or_return_scalar(eps, b),
+            weight_decay=index_array_or_return_scalar(weight_decay, b),
+            amsgrad=amsgrad,
+        ) for b, params in enumerate(unfused_params)
+    ]
+    super(PartiallyFusedAdam, self).__init__(fused_adam, unfused_adams)

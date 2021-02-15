@@ -1,4 +1,5 @@
 import numpy as np
+import random
 import torch
 import torch.optim as optim
 
@@ -7,7 +8,7 @@ from hfta.optim import get_hfta_optim_for, index_array_or_return_scalar
 from utils import _TestNet, _optim_testing_procedure
 
 
-def testcase(
+def testcase_fused(
     B=3,
     lr=1e-3,
     betas=(0.9, 0.999),
@@ -42,9 +43,50 @@ def testcase(
                            optimizer_array)
 
 
+def testcase_partially_fused(B=3, amsgrad=False):
+  net_array = [_TestNet() for _ in range(B)]
+  net_fused = _TestNet(B=B, partially_fused=True)
+  lr = [random.uniform(1e-4, 1e-2) for _ in range(B)]
+  betas = (
+      [random.uniform(0.8, 0.99) for _ in range(B)],
+      [random.uniform(0.998, 0.9999) for _ in range(B)],
+  )
+  eps = [random.uniform(1e-9, 1e-7) for _ in range(B)]
+  weight_decay = [random.uniform(0.0, 0.3) for _ in range(B)]
+  optimizer_array = [
+      optim.Adam(
+          net_array[b].parameters(),
+          lr=index_array_or_return_scalar(lr, b),
+          betas=(
+              index_array_or_return_scalar(betas[0], b),
+              index_array_or_return_scalar(betas[1], b),
+          ),
+          eps=index_array_or_return_scalar(eps, b),
+          weight_decay=index_array_or_return_scalar(weight_decay, b),
+          amsgrad=amsgrad,
+      ) for b in range(B)
+  ]
+  partially_fused_optimizer = get_hfta_optim_for(
+      optim.Adam,
+      B=B,
+      partially_fused=True,
+  )(
+      net_fused.parameters(),
+      net_fused.unfused_parameters(),
+      lr=lr,
+      betas=betas,
+      eps=eps,
+      weight_decay=weight_decay,
+      amsgrad=amsgrad,
+      B=B,
+  )
+  _optim_testing_procedure(net_fused, net_array, partially_fused_optimizer,
+                           optimizer_array)
+
+
 if __name__ == '__main__':
   testcase_automator(
-      testcase,
+      testcase_fused,
       {
           'B': [1, 5, 8],
           'lr': [
@@ -111,6 +153,13 @@ if __name__ == '__main__':
               0.3,
               0.0,
           ],
+          'amsgrad': [True],
+      },
+  )
+  testcase_automator(
+      testcase_partially_fused,
+      {
+          'B': [1, 5, 8],
           'amsgrad': [True],
       },
   )

@@ -5,7 +5,8 @@ from torch.optim import Optimizer
 
 from .utils import (_validate_range, _broadcastablize,
                     _move_coeff_to_same_device, _reduce_array_if_possible_for,
-                    _zero_grad_if_cuda)
+                    _zero_grad_if_cuda, index_array_or_return_scalar)
+from .partial import PartiallyFusedOptimizer
 
 
 class Adadelta(Optimizer):
@@ -115,3 +116,38 @@ class Adadelta(Optimizer):
           acc_delta.mul_(rho).addcmul_(delta, delta, value=1 - rho)
 
     return loss
+
+
+class PartiallyFusedAdadelta(PartiallyFusedOptimizer):
+
+  def __init__(
+      self,
+      fused_params,
+      unfused_params,
+      lr=1.0,
+      rho=0.9,
+      eps=1e-6,
+      weight_decay=0,
+      B=1,
+  ):
+    fused_adadelta = Adadelta(
+        fused_params,
+        lr=lr,
+        rho=rho,
+        eps=eps,
+        weight_decay=weight_decay,
+        B=B,
+    )
+    unfused_adadelta = [
+        torch.optim.Adadelta(
+            params,
+            lr=index_array_or_return_scalar(lr, b),
+            rho=index_array_or_return_scalar(rho, b),
+            eps=index_array_or_return_scalar(eps, b),
+            weight_decay=index_array_or_return_scalar(weight_decay, b),
+        ) for b, params in enumerate(unfused_params)
+    ]
+    super(PartiallyFusedAdadelta, self).__init__(
+        fused_adadelta,
+        unfused_adadelta,
+    )

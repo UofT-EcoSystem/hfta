@@ -1,43 +1,184 @@
 import torch
 import torch.nn as nn
 import numpy as np
+import itertools
 
 from hfta.ops import get_hfta_op_for
 
 
+def _snatch_grads_unfused(op_list, op, b):
+  op_list[b].weight.grad = op.weight.grad
+  if op_list[b].bias is not None:
+    op_list[b].bias.grad = op.bias.grad
+
+
+def _snatch_grads_linear(fused_op, op, b, fused=True):
+  if fused:
+    fused_op.weight.grad[b] = op.weight.grad.transpose(0, 1)
+    if fused_op.bias is not None:
+      fused_op.bias.grad[b] = op.bias.grad.unsqueeze(0)
+  else:
+    _snatch_grads_unfused(fused_op, op, b)
+
+
+def _snatch_grads_conv2d(fused_op, op, b, fused=True):
+  if fused:
+    fused_op.weight.grad[b] = op.weight.grad
+    if fused_op.bias is not None:
+      fused_op.bias.grad[b] = op.bias.grad
+  else:
+    _snatch_grads_unfused(fused_op, op, b)
+
+
+def _snatch_parameters_unfused(op_list, op, b):
+  op_list[b].weight.data = op.weight.data
+  if op_list[b].bias is not None:
+    op_list[b].bias.data = op.bias.data
+
+
+def _assert_params_unfused(op_list, op, b):
+  np.testing.assert_allclose(
+      op_list[b].weight.data.numpy(),
+      op.weight.data.numpy(),
+      rtol=1e-4,
+  )
+  if op_list[b].bias is not None:
+    np.testing.assert_allclose(
+        op_list[b].bias.data.numpy(),
+        op.bias.data.numpy(),
+        rtol=1e-4,
+    )
+
+
+def _assert_params_linear(fused_op, op, b, fused=True):
+  try:
+    if fused:
+      np.testing.assert_allclose(
+          fused_op.weight.data[b].numpy(),
+          op.weight.data.transpose(0, 1).numpy(),
+          rtol=1e-4,
+      )
+      if fused_op.bias is not None:
+        np.testing.assert_allclose(
+            fused_op.bias.data[b].numpy(),
+            op.bias.data.unsqueeze(0).numpy(),
+            rtol=1e-4,
+        )
+    else:
+      _assert_params_unfused(fused_op, op, b)
+  except AssertionError as e:
+    print(e)
+
+
+def _assert_params_conv2d(fused_op, op, b, fused=True):
+  try:
+    if fused:
+      np.testing.assert_allclose(
+          fused_op.weight.data[b].numpy(),
+          op.weight.data.numpy(),
+          rtol=1e-4,
+      )
+      if fused_op.bias is not None:
+        np.testing.assert_allclose(
+            fused_op.bias.data[b].numpy(),
+            op.bias.data.numpy(),
+            rtol=1e-4,
+        )
+    else:
+      _assert_params_unfused(fused_op, op, b)
+  except AssertionError as e:
+    print(e)
+
+
 class _TestNet(nn.Module):
 
-  def __init__(self, B=0):
+  def __init__(self, B=0, partially_fused=False):
     super(_TestNet, self).__init__()
     self.conv1 = get_hfta_op_for(nn.Conv2d, B=B)(3, 16, 3, 3)
-    self.conv2 = get_hfta_op_for(nn.Conv2d, B=B)(64, 32, 5, 5)
-    self.linear1 = get_hfta_op_for(nn.Linear, B=B)(10, 30)
+    if partially_fused:
+      self.conv2 = [nn.Conv2d(64, 32, 5, 5) for _ in range(B)]
+    else:
+      self.conv2 = get_hfta_op_for(nn.Conv2d, B=B)(64, 32, 5, 5)
+    if partially_fused:
+      self.linear1 = [nn.Linear(10, 30) for _ in range(B)]
+    else:
+      self.linear1 = get_hfta_op_for(nn.Linear, B=B)(10, 30)
     self.linear2 = get_hfta_op_for(nn.Linear, B=B)(100, 20)
+    self.partially_fused = partially_fused
 
   def snatch_parameters(self, net, b):
     self.conv1.snatch_parameters(net.conv1, b)
-    self.conv2.snatch_parameters(net.conv2, b)
-    self.linear1.snatch_parameters(net.linear1, b)
+    if self.partially_fused:
+      _snatch_parameters_unfused(self.conv2, net.conv2, b)
+      _snatch_parameters_unfused(self.linear1, net.linear1, b)
+    else:
+      self.conv2.snatch_parameters(net.conv2, b)
+      self.linear1.snatch_parameters(net.linear1, b)
     self.linear2.snatch_parameters(net.linear2, b)
+
+  def snatch_grads(self, net, b):
+    _snatch_grads_conv2d(self.conv1, net.conv1, b)
+    _snatch_grads_conv2d(
+        self.conv2,
+        net.conv2,
+        b,
+        fused=(not self.partially_fused),
+    )
+    _snatch_grads_linear(
+        self.linear1,
+        net.linear1,
+        b,
+        fused=(not self.partially_fused),
+    )
+    _snatch_grads_linear(self.linear2, net.linear2, b)
+
+  def unfused_parameters(self):
+    if not self.partially_fused:
+      return []
+    B = len(self.conv2)
+    assert B == len(self.linear1)
+    return [
+        itertools.chain(
+            self.conv2[b].parameters(),
+            self.linear1[b].parameters(),
+        ) for b in range(B)
+    ]
+
+  def assert_params(self, net, b):
+    _assert_params_conv2d(self.conv1, net.conv1, b)
+    _assert_params_conv2d(
+        self.conv2,
+        net.conv2,
+        b,
+        fused=(not self.partially_fused),
+    )
+    _assert_params_linear(
+        self.linear1,
+        net.linear1,
+        b,
+        fused=(not self.partially_fused),
+    )
+    _assert_params_linear(self.linear2, net.linear2, b)
 
 
 def _init_test_nets_with_grads(net_fused, net_array):
   B = len(net_array)
+  # Sync. init. parameters.
   for b in range(B):
     net_fused.snatch_parameters(net_array[b], b)
-  grads_list = [[] for _ in net_fused.parameters()]
+  # Init. grads for net_array.
   for b in range(B):
-    for i, p in enumerate(net_array[b].parameters()):
+    for p in net_array[b].parameters():
       p.grad = torch.rand_like(p)
-      grads_list[i].append(p.grad.unsqueeze(0))
-  for i, p in enumerate(net_fused.parameters()):
-    cat_grad = torch.cat(grads_list[i])
-    if p.dim() == 3:  # Linear layer.
-      if cat_grad.dim() == 2:  # bias
-        cat_grad = cat_grad.unsqueeze(1)
-      else:  # weight
-        cat_grad = cat_grad.transpose(1, 2)
-    p.grad = cat_grad
+  # Init. grads for net_fused to zeros.
+  for p in net_fused.parameters():
+    p.grad = torch.zeros_like(p)
+  for b_params in net_fused.unfused_parameters():
+    for p in b_params:
+      p.grad = torch.zeros_like(p)
+  # Assign net_fused with the same grads from net_array.
+  for b in range(B):
+    net_fused.snatch_grads(net_array[b], b)
 
 
 def _take_step_on_test_optimizers(optimizer_fused, optimizer_array):
@@ -48,25 +189,8 @@ def _take_step_on_test_optimizers(optimizer_fused, optimizer_array):
 
 def _verify_test_nets_params(net_fused, net_array):
   B = len(net_array)
-  params_list = [[] for _ in net_fused.parameters()]
   for b in range(B):
-    for i, p in enumerate(net_array[b].parameters()):
-      params_list[i].append(p.data.unsqueeze(0))
-  for i, p_fused in enumerate(net_fused.parameters()):
-    cat_param = torch.cat(params_list[i])
-    if p_fused.dim() == 3:  # Linear layer.
-      if cat_param.dim() == 2:  # bias
-        cat_param = cat_param.unsqueeze(1)
-      else:  # weight
-        cat_param = cat_param.transpose(1, 2)
-    try:
-      np.testing.assert_allclose(
-          p_fused.data.numpy(),
-          cat_param.numpy(),
-          rtol=1e-4,
-      )
-    except AssertionError as e:
-      print(e)
+    net_fused.assert_params(net_array[b], b)
 
 
 def _optim_testing_procedure(net_fused, net_array, optimizer_fused,
