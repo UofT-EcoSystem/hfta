@@ -138,11 +138,11 @@ def main(args):
     # Gather the results.
     results_frame = pd.read_csv(os.path.join(results_dir, 'eval.csv'))
     if isinstance(ids, (list, tuple)):
-      results = [{'acc': acc} for acc in results_frame['acc'].tolist()]
+      results = [{'acc': acc} for acc in results_frame['acc:top1'].tolist()]
       assert len(results) == len(ids)
       return results, [False] * len(ids)
     else:
-      return {'acc': results_frame['acc'][0]}, False
+      return {'acc': results_frame['acc:top1'][0]}, False
 
   def dry_run(
       B=None,
