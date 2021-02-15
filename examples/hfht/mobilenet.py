@@ -7,7 +7,7 @@ import random
 import subprocess
 import sys
 from pathlib import Path
-import logging 
+import logging
 
 from hyperopt import hp
 from hyperopt.pyll.stochastic import sample
@@ -17,7 +17,6 @@ from hfta.hfht import (tune_hyperparameters, attach_common_args,
                        generate_fusible_param_flags, generate_nonfusible_param)
 from hfta.workflow import extract_logging_level
 from hfta.hfht.utils import fuse_dicts
-
 
 
 def main(args):
@@ -58,18 +57,17 @@ def main(args):
         str(args.seed),
         '--batch_size',
         str(generate_nonfusible_param(params, 'batch_size')),
-        '--version', 
+        '--version',
         str(generate_nonfusible_param(params, 'version')),
     ]
     if results_dir is not None:
       cmd.extend(['--outf', results_dir])
-    
-    cmd.extend(
-        generate_fusible_param_flags(
-            params,
-            list(fusibles.keys()),
-        ))
-    
+
+    cmd.extend(generate_fusible_param_flags(
+        params,
+        list(fusibles.keys()),
+    ))
+
     if args.mode == 'hfta':
       cmd.append('--hfta')
     if args.amp:
@@ -99,7 +97,7 @@ def main(args):
       logging.error(e)
       succeeded = False
     return succeeded
-   
+
   def try_params(ids, epochs, params, env_vars=None):
     """ Running the training process for pointnet classification task.
 
@@ -183,7 +181,6 @@ def main(args):
       seed=args.seed,
       outdir=args.outdir,
   )
-
 
 
 def attach_args(parser=argparse.ArgumentParser()):
