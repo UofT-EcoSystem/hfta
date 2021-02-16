@@ -7,7 +7,8 @@ from torch.optim import Optimizer
 from torch.optim.lr_scheduler import EPOCH_DEPRECATION_WARNING
 
 from .utils import (_reduce_array_if_possible_for, _to_tensor,
-                    _get_coeff_like_params_map)
+                    _get_coeff_like_params_map, index_array_or_return_scalar)
+from .partial import PartiallyFusedLRScheduler
 
 
 class _LRScheduler(object):
@@ -76,9 +77,9 @@ class _LRScheduler(object):
   def state_dict(self):
     """Returns the state of the scheduler as a :class:`dict`.
 
-        It contains an entry for every variable in self.__dict__ which
-        is not the optimizer.
-        """
+    It contains an entry for every variable in self.__dict__ which
+    is not the optimizer.
+    """
     return {
         key: value for key, value in self.__dict__.items() if key != 'optimizer'
     }
@@ -86,15 +87,15 @@ class _LRScheduler(object):
   def load_state_dict(self, state_dict):
     """Loads the schedulers state.
 
-        Arguments:
-            state_dict (dict): scheduler state. Should be an object returned
-                from a call to :meth:`state_dict`.
-        """
+    Arguments:
+      state_dict (dict): scheduler state. Should be an object returned
+        from a call to :meth:`state_dict`.
+    """
     self.__dict__.update(state_dict)
 
   def get_last_lr(self):
     """ Return last computed learning rate by current scheduler.
-        """
+    """
     return self._last_lr
 
   def get_lr(self):
@@ -275,3 +276,31 @@ class StepLR(_LRScheduler):
           self._update_lr(base_lr, group['params'], multiplier)
           for base_lr, group in zip(self.base_lrs, self.optimizer.param_groups)
       ]
+
+
+class PartiallyFusedStepLR(PartiallyFusedLRScheduler):
+
+  def __init__(
+      self,
+      partially_fused_optimizer,
+      step_size,
+      gamma=0.1,
+      last_epoch=-1,
+      B=1,
+  ):
+    fused_steplr = StepLR(
+        partially_fused_optimizer._fused_optimizer,
+        step_size,
+        gamma=gamma,
+        last_epoch=last_epoch,
+        B=B,
+    )
+    unfused_steplrs = [
+        torch.optim.lr_scheduler.StepLR(
+            partially_fused_optimizer._unfused_optimizers[b],
+            index_array_or_return_scalar(step_size, b),
+            gamma=index_array_or_return_scalar(gamma, b),
+            last_epoch=index_array_or_return_scalar(last_epoch, b),
+        ) for b in range(B)
+    ]
+    super(PartiallyFusedStepLR, self).__init__(fused_steplr, unfused_steplrs)

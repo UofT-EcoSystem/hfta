@@ -3,7 +3,7 @@ import torch.optim
 
 from .adadelta import Adadelta, PartiallyFusedAdadelta
 from .adam import Adam, PartiallyFusedAdam
-from .lr_scheduler import StepLR
+from .lr_scheduler import StepLR, PartiallyFusedStepLR
 from .utils import (index_array_or_return_scalar,
                     consolidate_hyperparams_and_determine_B)
 
@@ -21,6 +21,10 @@ _LR_SCHEDULER_MAP = {
     torch.optim.lr_scheduler.StepLR: StepLR,
 }
 
+_PARTIALLY_FUSED_LR_SCHEDULER_MAP = {
+    torch.optim.lr_scheduler.StepLR: PartiallyFusedStepLR,
+}
+
 
 def get_hfta_optim_for(torch_optim_class, B=1, partially_fused=False):
   if B > 0:
@@ -35,8 +39,18 @@ def get_hfta_optim_for(torch_optim_class, B=1, partially_fused=False):
     return torch_optim_class
 
 
-def get_hfta_lr_scheduler_for(torch_lr_scheduler_class, B=1):
+def get_hfta_lr_scheduler_for(
+    torch_lr_scheduler_class,
+    B=1,
+    partially_fused=False,
+):
   if B > 0:
-    return functools.partial(_LR_SCHEDULER_MAP[torch_lr_scheduler_class], B=B)
+    if partially_fused:
+      return functools.partial(
+          _PARTIALLY_FUSED_LR_SCHEDULER_MAP[torch_lr_scheduler_class],
+          B=B,
+      )
+    else:
+      return functools.partial(_LR_SCHEDULER_MAP[torch_lr_scheduler_class], B=B)
   else:
     return torch_lr_scheduler_class

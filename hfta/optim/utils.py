@@ -161,11 +161,15 @@ class _TestNet(nn.Module):
     _assert_params_linear(self.linear2, net.linear2, b)
 
 
-def _init_test_nets_with_grads(net_fused, net_array):
+def _init_test_nets(net_fused, net_array):
   B = len(net_array)
   # Sync. init. parameters.
   for b in range(B):
     net_fused.snatch_parameters(net_array[b], b)
+
+
+def _set_grads(net_fused, net_array):
+  B = len(net_array)
   # Init. grads for net_array.
   for b in range(B):
     for p in net_array[b].parameters():
@@ -181,6 +185,12 @@ def _init_test_nets_with_grads(net_fused, net_array):
     net_fused.snatch_grads(net_array[b], b)
 
 
+def _zero_grads(optimizer_fused, optimizer_array):
+  for optimizer in optimizer_array:
+    optimizer.zero_grad()
+  optimizer_fused.zero_grad()
+
+
 def _take_step_on_test_optimizers(optimizer_fused, optimizer_array):
   for optimizer in optimizer_array:
     optimizer.step()
@@ -193,12 +203,22 @@ def _verify_test_nets_params(net_fused, net_array):
     net_fused.assert_params(net_array[b], b)
 
 
-def _optim_testing_procedure(net_fused, net_array, optimizer_fused,
-                             optimizer_array):
-  # Init net_array and net_fused with gradients.
-  _init_test_nets_with_grads(net_fused, net_array)
-  # Call step().
-  _take_step_on_test_optimizers(optimizer_fused, optimizer_array)
+def _optim_testing_procedure(
+    net_fused,
+    net_array,
+    optimizer_fused,
+    optimizer_array,
+    num_iters=10,
+):
+  # Init parameters for net_array and net_fused.
+  _init_test_nets(net_fused, net_array)
+  for _ in range(num_iters):
+    # Zero out gradients.
+    _zero_grads(optimizer_fused, optimizer_array)
+    # Set gradients for net_array and net_fused.
+    _set_grads(net_fused, net_array)
+    # Call step().
+    _take_step_on_test_optimizers(optimizer_fused, optimizer_array)
   # Verify parameter values.
   _verify_test_nets_params(net_fused, net_array)
 
@@ -277,7 +297,7 @@ def _move_coeff_to_same_device(group, name, p, is_tuple=False):
 
 
 def index_array_or_return_scalar(array_or_scalar, b):
-  scalar_types = (int, float)
+  scalar_types = (int, float, type(None))
   if isinstance(array_or_scalar, scalar_types):
     return array_or_scalar
   elif isinstance(array_or_scalar, (list, tuple)):

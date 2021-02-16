@@ -2,6 +2,8 @@ import itertools
 import numpy as np
 import torch
 
+from .utils import index_array_or_return_scalar, _zero_grad_if_cuda
+
 
 class PartiallyFusedOptimizer:
 
@@ -13,16 +15,16 @@ class PartiallyFusedOptimizer:
     self._fused_optimizer = fused_optimizer
     self._unfused_optimizers = unfused_optimizers
 
-  def step(self, *args, **kwargs):
-    """
-    fused_optimizer_args: tuple
-    fused_optimizer_kwargs: dict
-    unfused_optimizers_args: iterable of tuples
-    unfused_optimizers_kwargs: iterable of dicts
-    """
-    fused_ret = self._fused_optimizer.step(*args, **kwargs)
+  def zero_grad(self):
+    self._fused_optimizer.zero_grad()
+    for ufo in self._unfused_optimizers:
+      if not _zero_grad_if_cuda(ufo):
+        ufo.zero_grad()
+
+  def step(self, closure=None):
+    fused_ret = self._fused_optimizer.step(closure=closure)
     unfused_rets = [
-        ufo.step(*args, **kwargs) for ufo in self._unfused_optimizers
+        ufo.step(closure=closure) for ufo in self._unfused_optimizers
     ]
     return fused_ret, unfused_rets
 
@@ -31,4 +33,50 @@ class PartiallyFusedOptimizer:
     return itertools.chain(
         self._fused_optimizer.param_groups,
         *(ufo.param_groups for ufo in self._unfused_optimizers),
+    )
+
+  @property
+  def fused_param_groups(self):
+    return self._fused_optimizer.param_groups
+
+  @property
+  def unfused_param_groups(self):
+    """ Returns iterable of param_groups; each param_groups corresponds to a
+    single unfused optimizer.
+    """
+    return (ufo.param_groups for ufo in self._unfused_optimizers)
+
+
+class PartiallyFusedLRScheduler:
+
+  def __init__(self, fused_lr_scheduler, unfused_lr_schedulers):
+    self._fused_lr_scheduler = fused_lr_scheduler
+    self._unfused_lr_schedulers = unfused_lr_schedulers
+
+  def step(self, epoch=None):
+    self._fused_lr_scheduler.step(epoch=epoch)
+    for b, ufls in enumerate(self._unfused_lr_schedulers):
+      ufls.step(epoch=index_array_or_return_scalar(epoch, b))
+
+  def state_dict(self):
+    return {
+        'fused': self._fused_lr_scheduler.state_dict(),
+        'unfused': [ufls.state_dict() for ufls in self._unfused_lr_schedulers]
+    }
+
+  def load_state_dict(self, state_dict):
+    self._fused_lr_scheduler.load_state_dict(state_dict['fused'])
+    for ufls, sd in zip(self._unfused_lr_schedulers, state_dict['unfused']):
+      ufls.load_state_dict(sd)
+
+  def get_last_lr(self):
+    return (
+        self._fused_lr_scheduler.get_last_lr(),
+        [ufls.get_last_lr() for ufls in self._unfused_lr_schedulers],
+    )
+
+  def get_lr(self):
+    return (
+        self._fused_lr_scheduler.get_lr(),
+        [ufls.get_lr() for ufls in self._unfused_lr_schedulers],
     )
