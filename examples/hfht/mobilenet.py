@@ -33,7 +33,7 @@ def main(args):
       'step_size': hp.choice('step_size', (5, 10, 20, 40)),
   }
   nonfusibles = {
-      'batch_size': hp.choice('batch_size', (8, 16, 32)),
+      'batch_size': hp.choice('batch_size', (1024, 2048)),
       'version': hp.choice('version', ('v2', 'v3s', 'v3l')),
   }
 
