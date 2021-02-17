@@ -34,7 +34,7 @@ def main(args):
   }
   nonfusibles = {
       'batch_size': hp.choice('batch_size', (1024, 2048)),
-      'version': hp.choice('version', ('v2', 'v3s', 'v3l')),
+      'version': hp.choice('version', ('v2', 'v3l')),
   }
 
   def _run(results_dir, epochs, iters_per_epoch, params, env_vars=None):
@@ -99,7 +99,7 @@ def main(args):
     return succeeded
 
   def try_params(ids, epochs, params, env_vars=None):
-    """ Running the training process for pointnet classification task.
+    """ Running the training process for mobiletnet classification task.
 
     Args:
       ids: Either a single int ID (for serial), or a list of IDs (for HFTA).

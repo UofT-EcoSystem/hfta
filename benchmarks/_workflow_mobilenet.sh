@@ -33,7 +33,7 @@ _workflow_mobilenet() {
     hfta_dry_run_repeats=3
   fi
 
-  _mobilenet_warmup_data ${dataset} ${version}
+  _mobilenet_warmup_data ${dataset}
 
   local i
   for ((i=0; i<${repeats}; i++)); do
