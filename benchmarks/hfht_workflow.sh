@@ -10,6 +10,9 @@ source benchmarks/_workflow_mobilenet.sh
 _get_modes() {
   if [ "${DEVICE}" == "cuda" ]; then
     modes=("serial" "concurrent" "mps" "hfta")
+    if ["${DEVICE_MODEL}" == "a100" ]; then
+	modes+=("mig")
+    fi 
   elif [ "${DEVICE}" == "xla" ]; then
     modes=("serial" "hfta")
   elif [ "${DEVICE}" == "cpu" ]; then
@@ -85,7 +88,7 @@ hfht_workflow_mobilenet_cifar10() {
 
   local hfht_dry_run_repeats=3
   local hfht_dry_run_epochs=3
-  local hfht_dry_run_iters_per_epochs=30
+  local hfht_dry_run_iters_per_epochs=10
 
 
   local base_cmd="\
@@ -99,5 +102,5 @@ hfht_workflow_mobilenet_cifar10() {
   
   echo "Warmup ..."
   _mobilenet_warmup_data cifar10
-  _sweep "${base_cmd}" ${OUTDIR_ROOT}/pointnet_cifar10 ${repeats}
+  _sweep "${base_cmd}" ${OUTDIR_ROOT}/mobilenet_cifar10 ${repeats}
 }
