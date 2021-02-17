@@ -10,7 +10,7 @@ source benchmarks/_workflow_mobilenet.sh
 _get_modes() {
   if [ "${DEVICE}" == "cuda" ]; then
     modes=("serial" "concurrent" "mps" "hfta")
-    if ["${DEVICE_MODEL}" == "a100" ]; then
+    if [ "${DEVICE_MODEL}" == "a100" ]; then
 	modes+=("mig")
     fi 
   elif [ "${DEVICE}" == "xla" ]; then
