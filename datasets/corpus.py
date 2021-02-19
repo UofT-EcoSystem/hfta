@@ -60,8 +60,10 @@ class Corpus(object):
       for i, item in enumerate(words):
         self.dictionary.add_word(item[1])
 
-    self.train = self.tokenize(os.path.join(path, 'wiki.train.tokens'), with_pos)
-    self.valid = self.tokenize(os.path.join(path, 'wiki.valid.tokens'), with_pos)
+    self.train = self.tokenize(os.path.join(path, 'wiki.train.tokens'),
+                               with_pos)
+    self.valid = self.tokenize(os.path.join(path, 'wiki.valid.tokens'),
+                               with_pos)
     self.test = self.tokenize(os.path.join(path, 'wiki.test.tokens'), with_pos)
 
   def add_dict(self, path):
