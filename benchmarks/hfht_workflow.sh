@@ -45,12 +45,14 @@ _get_dry_run_args() {
 
   # used for concurrent, mps, hfta, mig
   local hfht_dry_run_epochs=3
-  local hfht_dry_run_iters_per_epochs=2
+  local hfht_dry_run_iters_per_epochs
   local hfht_dry_run_repeats
   if [ "$mode" == "concurrent" ] || [ "$mode" == "mps" ] || [ "$mode" == "mig" ]; then
     hfht_dry_run_repeats=10
+    hfht_dry_run_iters_per_epochs=10
   elif [ $mode == "hfta" ]; then
     hfht_dry_run_repeats=3
+    hfht_dry_run_iters_per_epochs=2
   else
     echo "Unknown mode ${mode}"
     return -1
