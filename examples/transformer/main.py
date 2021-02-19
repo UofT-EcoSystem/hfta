@@ -251,7 +251,6 @@ def train(args, model, train_data, optimizer, epoch, B, scaler=None):
     if scaler is not None:
       scaler.update()
 
-
     if batch_idx % args.log_interval == 0 and batch_idx > 0:
       with torch.no_grad():
         cur_loss = F.nll_loss(output, targets.contiguous(),
