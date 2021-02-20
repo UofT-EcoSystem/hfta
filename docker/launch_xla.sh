@@ -9,5 +9,5 @@ docker run \
   -v $(pwd):$(pwd) \
   -v ${DATASETS}:${DATASETS} \
   -w $(pwd) \
-  gcr.io/tpu-pytorch/xla:nightly_3.7_20201125 \
+  gcr.io/tpu-pytorch/xla:r1.7 \
   /bin/bash
