@@ -19,11 +19,11 @@ import argparse
 import time
 import os
 import sys
+import numpy as np
 import torch
 import torch.nn.functional as F
 import torch.onnx
 import random
-import numpy as np
 from torch import optim
 import torch.backends.cudnn as cudnn
 import torch.cuda.amp as amp
@@ -155,8 +155,8 @@ def batchify(data, bsz):
   seq = data[0].narrow(0, 0, nbatch * bsz).view(bsz, -1)
   pos = data[1].narrow(0, 0, nbatch * bsz).view(bsz, -1)
   # Evenly divide the data across the bsz batches.
-  seq = seq.t().contiguous().to(device)
-  pos = pos.t().contiguous().to(device)
+  seq = seq.t().contiguous()
+  pos = pos.t().contiguous()
   return seq, pos
 
 
@@ -200,7 +200,7 @@ def get_batch(source, i):
       pre = p_now
     seg[idx][id:] = 1
   target = source[0][i + 1:i + 1 + seq_len].view(-1)
-  return data, pos, seg.to(device), target
+  return data.to(device), pos.to(device), seg.to(device), target.to(device)
 
 
 def evaluate(args, model, eval_data, B=0):
@@ -316,7 +316,7 @@ B = len(args.lr) if args.hfta else 0
 # Load data
 ###############################################################################
 sys.path.append(os.path.join(args.dataset, os.pardir))
-from corpus import Corpus
+from datasets.corpus import Corpus
 corpus = Corpus(args.dataset, args.max_token, True)
 train_data = batchify(corpus.train, args.batch_size)
 val_data = batchify(corpus.valid, args.batch_size)
