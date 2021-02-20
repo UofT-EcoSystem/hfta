@@ -134,6 +134,7 @@ class ConcurrentScheduler(HardwareSharingScheduler):
       dry_run_epochs=2,
       dry_run_iters_per_epoch=10,
       nonfusibles=None,
+      B_limit=None,
   ):
     super(ConcurrentScheduler, self).__init__(
         dry_run_callback=dry_run_callback,
@@ -141,6 +142,7 @@ class ConcurrentScheduler(HardwareSharingScheduler):
         dry_run_epochs=dry_run_epochs,
         dry_run_iters_per_epoch=dry_run_iters_per_epoch,
         nonfusibles=nonfusibles,
+        B_limit=B_limit,
     )
     self.try_params = try_params_callback
     self.sudo = "" if os.geteuid() == 0 else "sudo"

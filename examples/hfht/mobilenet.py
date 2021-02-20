@@ -1,6 +1,5 @@
 import argparse
 import copy
-import json
 import numpy as np
 import os
 import pandas as pd
@@ -8,16 +7,16 @@ import random
 import subprocess
 import sys
 from pathlib import Path
-from pprint import pprint
+import logging
 
 from hyperopt import hp
 from hyperopt.pyll.stochastic import sample
 
-from hfta.hfht.algorithms import RandomSearch, Hyperband
-from hfta.hfht.schedule import (SerialScheduler, HFTAScheduler,
-                                ConcurrentScheduler, MPSScheduler, MIGScheduler)
-from hfta.hfht.utils import (handle_integers, generate_fusible_param_flags,
-                             generate_nonfusible_param, to_csv_dicts)
+from hfta.hfht import (tune_hyperparameters, attach_common_args,
+                       rearrange_algorithm_kwargs, handle_integers,
+                       generate_fusible_param_flags, generate_nonfusible_param)
+from hfta.workflow import extract_logging_level
+from hfta.hfht.utils import fuse_dicts
 
 
 def main(args):
@@ -25,26 +24,82 @@ def main(args):
   np.random.seed(args.seed)
   rng_state = np.random.RandomState(seed=args.seed)
 
-  if not os.path.isabs(args.outf):
-    args.outf = os.path.abspath(args.outf)
-
-  space = {
+  fusibles = {
       'lr': hp.uniform('lr', 0.0001, 0.01),
       'beta1': hp.uniform('beta1', 0.001, 0.999),
       'beta2': hp.uniform('beta2', 0.001, 0.999),
       'weight_decay': hp.uniform('weight_decay', 0.0, 0.5),
       'gamma': hp.uniform('gamma', 0.1, 0.9),
       'step_size': hp.choice('step_size', (5, 10, 20, 40)),
-      'batch-size': hp.choice('batch-size', (1024, 2048)),
+  }
+  nonfusibles = {
+      'batch_size': hp.choice('batch_size', (1024, 2048)),
       'version': hp.choice('version', ('v2', 'v3l')),
   }
 
-  def get_params():
-    params = sample(space, rng=rng_state)
-    return handle_integers(params)
+  def _run(results_dir, epochs, iters_per_epoch, params, env_vars=None):
+    # Build the cmd.
+    cmd = [
+        'python',
+        'main.py',
+        '--epochs',
+        str(epochs),
+        '--iters-per-epoch',
+        str(iters_per_epoch),
+        '--dataroot',
+        args.dataroot,
+        '--dataset',
+        args.dataset,
+        '--device',
+        args.device,
+        '--eval',
+        '--seed',
+        str(args.seed),
+        '--batch_size',
+        str(generate_nonfusible_param(params, 'batch_size')),
+        '--version',
+        str(generate_nonfusible_param(params, 'version')),
+    ]
+    if results_dir is not None:
+      cmd.extend(['--outf', results_dir])
+
+    cmd.extend(generate_fusible_param_flags(
+        params,
+        list(fusibles.keys()),
+    ))
+
+    if args.mode == 'hfta':
+      cmd.append('--hfta')
+    if args.amp:
+      cmd.append('--amp')
+
+    # Launch the training process.
+    succeeded = True
+    try:
+      logging.info('--> Running cmd = {}'.format(cmd))
+      subprocess.run(
+          cmd,
+          stdout=subprocess.DEVNULL if results_dir is None else open(
+              os.path.join(results_dir, 'stdout.txt'),
+              'w',
+          ),
+          stderr=subprocess.DEVNULL if results_dir is None else open(
+              os.path.join(results_dir, 'stderr.txt'),
+              'w',
+          ),
+          check=True,
+          cwd=os.path.join(
+              os.path.abspath(os.path.expanduser(os.path.dirname(__file__))),
+              '../mobilenet/'),
+          env=env_vars,
+      )
+    except subprocess.CalledProcessError as e:
+      logging.error(e)
+      succeeded = False
+    return succeeded
 
   def try_params(ids, epochs, params, env_vars=None):
-    """ Running the training process for pointnet classification task.
+    """ Running the training process for mobiletnet classification task.
 
     Args:
       ids: Either a single int ID (for serial), or a list of IDs (for HFTA).
@@ -66,147 +121,66 @@ def main(args):
         (list, tuple),
     ) else str(ids))
     # Allocate result dir.
-    results_dir = os.path.join(args.outf, ids_str)
+    results_dir = os.path.join(args.outdir, ids_str)
     Path(results_dir).mkdir(parents=True, exist_ok=True)
-    # Build the cmd.
-    cmd = [
-        'python',
-        'main.py',
-        '--epochs',
-        str(epochs),
-        '--iters-per-epoch',
-        str(args.iters_per_epoch),
-        '--outf',
+    # Run training.
+    succeeded = _run(
         results_dir,
-        '--dataroot',
-        args.dataroot,
-        '--dataset',
-        args.dataset,
-        '--device',
-        args.device,
-        '--eval',
-        '--seed',
-        str(args.seed),
-        '--batch-size',
-        str(generate_nonfusible_param(params, 'batch-size')),
-        '--version',
-        generate_nonfusible_param(params, 'version'),
-    ]
-    cmd.extend(
-        generate_fusible_param_flags(
-            params,
-            ['lr', 'beta1', 'beta2', 'weight_decay', 'gamma', 'step_size'],
-        ))
-    if args.mode == 'hfta':
-      cmd.append('--hfta')
-    if args.amp:
-      cmd.append('--amp')
-
-    # modify the environment if needed
-    env = dict(os.environ)
-    if env_vars is not None:
-      env.update(env_vars)
-
-    # Launch the training process.
-    print('--> Running cmd = {}'.format(cmd))
-    subprocess.run(
-        cmd,
-        stdout=open(os.path.join(results_dir, 'stdout.txt'), 'w'),
-        stderr=open(os.path.join(results_dir, 'stderr.txt'), 'w'),
-        check=True,
-        env=env,
-        cwd='../mobilenet/',
+        epochs,
+        args.iters_per_epoch,
+        params,
+        env_vars=env_vars,
     )
+    if not succeeded:
+      raise RuntimeError('_run failed!')
     # Gather the results.
     results_frame = pd.read_csv(os.path.join(results_dir, 'eval.csv'))
     if isinstance(ids, (list, tuple)):
-      results = [{
-          'acc:top1': acc_top1,
-          'acc:top5': acc_top5,
-      } for acc_top1, acc_top5 in zip(
-          results_frame['acc:top1'].tolist(),
-          results_frame['acc:top5'].tolist(),
-      )]
+      results = [{'acc': acc} for acc in results_frame['acc:top1'].tolist()]
       assert len(results) == len(ids)
       return results, [False] * len(ids)
     else:
-      return {
-          'acc:top1': results_frame['acc:top1'][0],
-          'acc:top5': results_frame['acc:top5'][0],
-      }, False
+      return {'acc': results_frame['acc:top1'][0]}, False
 
-  if args.mode == 'hfta':
-    scheduler = HFTAScheduler(
-        try_params,
-        ['batch-size', 'version'],
-        args.capacity_spec,
-    )
-  elif args.mode == 'concurrent':
-    scheduler = ConcurrentScheduler(
-        try_params,
-        args.concurrent_width,
-    )
-  elif args.mode == 'mps':
-    scheduler = MPSScheduler(
-        try_params,
-        args.concurrent_width,
-    )
-  elif args.mode == 'mig':
-    scheduler = MIGScheduler(
-        try_params,
-        args.concurrent_width,
-    )
-  else:
-    scheduler = SerialScheduler(try_params)
+  def dry_run(
+      B=None,
+      nonfusibles_kvs=None,
+      epochs=None,
+      iters_per_epoch=None,
+      env_vars=None,
+  ):
+    params = [{
+        **handle_integers(sample(fusibles, rng=rng_state)),
+        **nonfusibles_kvs
+    } for _ in range(max(B, 1))]
+    if B > 0:
+      params = fuse_dicts(params)
+    else:
+      params = params[0]
+    return _run(None, epochs, iters_per_epoch, params, env_vars=env_vars)
 
-  if args.algorithm == 'hyperband':
-    tuner = Hyperband(
-        get_params,
-        scheduler,
-        'acc:top1',
-        goal='max',
-        max_iters=args.max_iters_per_config,
-        eta=args.eta,
-        skip_last=args.skip_last,
-    )
-  elif args.algorithm == 'random':
-    # To ensure a fair comparison between Hyperband and Random Search,
-    # also pass in hyperband related parameters to decide the size
-    # of candidate set, and the number of training epoches.
-    tuner = RandomSearch(
-        get_params,
-        scheduler,
-        'acc:top1',
-        goal='max',
-        n_iters=args.n_iters,
-        n_configs=args.n_configs,
-    )
-  else:
-    raise ValueError('Invalid algorithm: {}'.format(args.algorithm))
-
-  history, trajectory = tuner.run()
-
-  print("\n=========================================================")
-  print("Done! the final results are:")
-  print("{} total, best:\n".format(len(history)))
-
-  for trial in sorted(
-      history.values(),
-      key=lambda trial: trial['result']['acc:top1'],
-      reverse=True,
-  )[:5]:
-    print("acc:top1={:.2%}|acc:top5={:.2%}|{:.1f}iterations|run {} ".format(
-        trial['result']['acc:top1'],
-        trial['result']['acc:top5'],
-        trial['iterations'],
-        trial['id'],
-    ))
-    pprint(trial['params'])
-
-  pd.json_normalize(history.values()).to_csv(
-      os.path.join(args.outf, 'history.csv'))
-  pd.json_normalize(trajectory).to_csv(os.path.join(args.outf,
-                                                    'trajectory.csv'))
+  tune_hyperparameters(
+      space={
+          **fusibles,
+          **nonfusibles
+      },
+      try_params_callback=try_params,
+      dry_run_callback=dry_run,
+      mode=args.mode,
+      algorithm=args.algorithm,
+      nonfusibles=nonfusibles.keys(),
+      dry_run_repeats=args.dry_run_repeats,
+      dry_run_epochs=args.dry_run_epochs,
+      dry_run_iters_per_epoch=args.dry_run_iters_per_epoch,
+      metric='acc',
+      goal='max',
+      algorithm_configs={
+          'hyperband': args.hyperband_kwargs,
+          'random': args.random_kwargs,
+      },
+      seed=args.seed,
+      outdir=args.outdir,
+  )
 
 
 def attach_args(parser=argparse.ArgumentParser()):
@@ -222,11 +196,10 @@ def attach_args(parser=argparse.ArgumentParser()):
       default=int(1e9),
       help='number of epochs to train for',
   )
-  parser.add_argument('--outf', type=str, default='cls', help='output folder')
   parser.add_argument(
       '--dataroot',
       type=str,
-      default='../data',
+      default='./datasets/cifar10',
       help='folder that stores input dataset',
   )
   parser.add_argument(
@@ -244,80 +217,19 @@ def attach_args(parser=argparse.ArgumentParser()):
       help="the device where this test is running",
   )
   parser.add_argument(
-      '--mode',
-      type=str,
-      default='serial',
-      choices=['serial', 'hfta', 'concurrent', 'mps', 'mig'],
-      help="the GPU sharing mode",
-  )
-  parser.add_argument(
       '--amp',
       default=False,
       action='store_true',
       help='Enable AMP; only used when --device is cuda',
   )
-  parser.add_argument(
-      '--seed',
-      type=int,
-      help='Seed',
-      default=1117,
-  )
-  parser.add_argument(
-      '--concurrent-width',
-      type=int,
-      help='the maximum number of concurrent training processes if concurrent '
-      'or mps is enabled; this is determined manually from the "worst case" '
-      'situation where the GPU memory footprint of the training process is '
-      'largest (i.e., FP32 training, batch-size == 2048 and version == v3l',
-      default=3,
-  )
-  parser.add_argument(
-      '--capacity-spec',
-      type=str,
-      default=None,
-      help='Path to a JSON spec file that lists the max numbers of models being'
-      'trained simultaneously that the current device support for HFTA',
-  )
-  parser.add_argument(
-      '--max-iters-per-config',
-      type=int,
-      default=81,
-      help='Hyperband maximum iterations per configuration',
-  )
-  parser.add_argument(
-      '--eta',
-      type=int,
-      default=3,
-      help='Hyperband configuration downsampling rate',
-  )
-  parser.add_argument(
-      '--skip-last',
-      type=int,
-      default=2,
-      help='Hyperband skipping last waves of configuration downsampling',
-  )
-  parser.add_argument(
-      '--n-iters',
-      type=int,
-      default=20,
-      help='RandomSearch (constant) iterations per configuration',
-  )
-  parser.add_argument(
-      '--n-configs',
-      type=int,
-      default=50,
-      help='RandomSearch total number of configurations',
-  )
-  parser.add_argument(
-      '--algorithm',
-      type=str,
-      default='hyperband',
-      choices=['hyperband', 'random'],
-      help="the hyper-parameter tuning algorithm to use",
-  )
+  parser = attach_common_args(parser)
   return parser
 
 
 if __name__ == '__main__':
-  parser = attach_args()
-  main(parser.parse_args())
+  args = attach_args().parse_args()
+  rearrange_algorithm_kwargs(args)
+  logging.basicConfig(level=extract_logging_level(args))
+  args.outdir = os.path.abspath(os.path.expanduser(args.outdir))
+  args.dataroot = os.path.abspath(os.path.expanduser(args.dataroot))
+  main(args)
