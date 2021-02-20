@@ -283,7 +283,7 @@ B = len(args.lr) if args.hfta else 0
 # Load data
 ###############################################################################
 sys.path.append(os.path.join(args.dataset, os.pardir))
-from corpus import Corpus
+from datasets.corpus import Corpus
 corpus = Corpus(args.dataset, args.max_token)
 train_data = batchify(corpus.train, args.batch_size)
 val_data = batchify(corpus.valid, args.batch_size)
