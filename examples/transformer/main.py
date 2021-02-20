@@ -139,7 +139,7 @@ def batchify(data, bsz):
   data = data.narrow(0, 0, nbatch * bsz)
   # Evenly divide the data across the bsz batches.
   data = data.view(bsz, -1).t().contiguous()
-  return data.to(device)
+  return data
 
 
 ###############################################################################
@@ -169,7 +169,7 @@ def get_batch(source, i):
   seq_len = min(args.bptt, len(source) - 1 - i)
   data = source[i:i + seq_len]
   target = source[i + 1:i + 1 + seq_len].view(-1)
-  return data, target
+  return data.to(device), target.to(device)
 
 
 def evaluate(args, model, eval_data, B):
