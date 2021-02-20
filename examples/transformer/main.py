@@ -3,11 +3,11 @@ import argparse
 import time
 import os
 import sys
+import numpy as np
 import torch
 import torch.nn.functional as F
 import torch.onnx
 import random
-import numpy as np
 from torch import optim
 import torch.backends.cudnn as cudnn
 import torch.cuda.amp as amp
