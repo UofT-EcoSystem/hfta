@@ -78,7 +78,9 @@ def main(args):
           env=env_map,
       )
     except subprocess.CalledProcessError as e:
-      logging.error(e)
+      logging.warning("An error has occurred during this trial, "\
+                      "but the experiment could have still succeeded")
+      logging.warning(e)
 
     # Issue 15: Plan B reliability issue with Transformer on TPU 
     # Currently when this is run on torch/xla, the script would finish
