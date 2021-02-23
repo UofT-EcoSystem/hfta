@@ -10,7 +10,7 @@ _workflow_transformer () {
   # For TPU, we need to retry to find a stable max_B
   if [ "${DEVICE}" == "xla" ]; then
     hfta_dry_run_repeats=3
-    hfta_dry_run_iters_per_epoch=100
+    hfta_dry_run_iters_per_epoch=1000
   fi
 
   local i
