@@ -5,10 +5,12 @@ _workflow_transformer () {
   local epochs=5
   local iters_per_epoch=1000
   local hfta_dry_run_repeats=1
+  local hfta_dry_run_iters_per_epoch=3
 
   # For TPU, we need to retry to find a stable max_B
   if [ "${DEVICE}" == "xla" ]; then
     hfta_dry_run_repeats=3
+    hfta_dry_run_iters_per_epoch=100
   fi
 
   local i
@@ -20,7 +22,8 @@ _workflow_transformer () {
       --dataroot datasets/wikitext-2/ \
       --device ${DEVICE} \
       --device-model ${DEVICE_MODEL} \
-      --hfta-dry-run-repeats ${hfta_dry_run_repeats}
+      --hfta-dry-run-repeats ${hfta_dry_run_repeats} \
+      --hfta-dry-run-iters-per-epoch ${hfta_dry_run_iters_per_epoch}
   done
 }
 
