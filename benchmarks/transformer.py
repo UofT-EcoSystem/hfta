@@ -3,6 +3,8 @@ import logging
 import os
 import random
 import subprocess
+import tempfile
+import shutil
 
 from hfta.workflow import (attach_args as attach_workflow_args, workflow,
                            rearrange_runner_kwargs, extract_logging_level)
@@ -33,6 +35,10 @@ def main(args):
     ]
     if outdir is not None:
       cmd.extend(['--outf', outdir])
+    else:
+      tmp_path = tempfile.mkdtemp()
+      cmd.extend(['--outf', tmp_path])
+
     if prec == 'amp' and device == 'cuda':
       cmd.append('--amp')
 
@@ -73,7 +79,20 @@ def main(args):
       )
     except subprocess.CalledProcessError as e:
       logging.error(e)
-      succeeded = False
+
+    # Issue 15: Plan B reliability issue with Transformer on TPU 
+    # Currently when this is run on torch/xla, the script would finish
+    # fine but some tear-down routine of TPU causes an abnormal exit.
+    # While this does not affect the results, it does make it hard to
+    # decide if the run succeeded. As a results, we rely on the existence
+    # of timing.csv (dumped at the end of main.py) to determine the success
+    # of the run
+    if outdir is not None:
+      succeeded = os.path.exists(os.path.join(outdir, "timing.csv"))
+    else:
+      succeeded = os.path.exists(os.path.join(tmp_path, "timing.csv"))
+      shutil.rmtree(tmp_path)
+
     return succeeded
 
   if workflow(
