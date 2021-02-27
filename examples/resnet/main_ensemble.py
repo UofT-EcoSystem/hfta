@@ -4,10 +4,9 @@ import torch
 import numpy as np
 import torch.optim as optim
 import torch.cuda.amp as amp
-import json
 
-from model import ResnetEnsembleModel, str_to_class
-from utils import train, test, init_dataloader, attach_default_args
+from model import ResNetEnsemble, str_to_class
+from utils import train, test, init_dataloader, attach_default_args, generate_ensemble_config
 
 
 try:
@@ -24,10 +23,10 @@ def attach_args(parser=argparse.ArgumentParser(
     description='Resnet Ensemble Model Example')):
   parser = attach_default_args(parser)
   parser.add_argument(
-      '--config_file',
-      type=str,
-      default='resnet_ensemble.conf',
-      help='folder to load the structure of resnet ensemble model')
+      '--serial_num',
+      type=int,
+      default=0,
+      help='how many config to generate, not need for serial')
   return parser
 
 def main(args):
@@ -50,19 +49,27 @@ def main(args):
 
   train_loader, test_loader = init_dataloader(args)
 
-  model_def = json.load(open(args.config_file, 'r'))
-  print("Loaded model:", model_def["name"])
-  print("Model config:", model_def)
-  B = model_def["B"]
+  B = len(args.lr) if args.hfta else 0
+  model_config = generate_ensemble_config(args.serial_num)
+  print("Model config:", model_config)
 
-  block = str_to_class(model_def["block"])
-  model = ResnetEnsembleModel(model_def["arch"], block,
-                              num_classes=10, B=B).to(device)
 
-  optimizer = get_hfta_optim_for(optim.Adadelta, B=B)(
+  normal_block = str_to_class(model_config["normal_block"])
+  serial_block = str_to_class(model_config["serial_block"])
+  model = ResNetEnsemble(model_config["arch"], normal_block, serial_block, num_classes=10, B=B).to(device)
+
+  if len(model.unfused_layers) > 0:
+    model.unfused_to(device)
+    optimizer = get_hfta_optim_for(optim.Adadelta, B=B, partially_fused=True)(
+        model.parameters(),
+        model.get_unfused_parameters(),
+        lr=args.lr if B > 0 else args.lr[0],
+    )
+  else:
+    optimizer = get_hfta_optim_for(optim.Adadelta, B=B)(
       model.parameters(),
       lr=args.lr if B > 0 else args.lr[0],
-  )
+    )
 
   epoch_timer = EpochTimer()
   for epoch in range(args.epochs):

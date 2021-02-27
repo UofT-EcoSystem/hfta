@@ -3,6 +3,7 @@ import torch.nn.functional as F
 import torch.cuda.amp as amp
 from torchvision import datasets, transforms
 import argparse
+import copy
 
 try:
   import torch_xla.core.xla_model as xm
@@ -19,7 +20,7 @@ def train(args, model, device, train_loader, optimizer, epoch, B, save_loss=Fals
   for batch_idx, (data, target) in enumerate(train_loader):
     data, target = data.to(device), target.to(device)
     N = target.size(0)
-    num_samples_per_epoch += N * max(B, 0)
+    num_samples_per_epoch += N * max(B, 1)
     if B > 0:
       data = data.unsqueeze(1).expand(-1, B, -1, -1, -1)
       target = target.repeat(B)
@@ -115,10 +116,9 @@ def test(model, device, test_loader, B):
       loss_str, correct_str))
 
 
-
 def init_dataloader(args, shuffle=False):
-  kwargs = {'batch_size': args.batch_size}
-  kwargs.update({'num_workers': 1, 'pin_memory': True, 'shuffle': shuffle}, )
+  kwargs = {'batch_size': args.batch_size, "num_workers": args.workers}
+  kwargs.update({'pin_memory': True, 'shuffle': shuffle}, )
 
   transform = transforms.Compose([
     transforms.ToTensor(),
@@ -147,8 +147,12 @@ def attach_default_args(parser=argparse.ArgumentParser()):
                       help='number of iterations per epoch to train for')
   parser.add_argument('--batch-size',
                       type=int,
-                      default=1000,
+                      default=128,
                       help='input batch size for training (default: 64)')
+  parser.add_argument('--workers',
+                      type=int,
+                      default=2,
+                      help='number of workers for dataloader')
   parser.add_argument('--outf', type=str, default=None, help='output folder')
   parser.add_argument('--dataset', type=str, required=True, help="dataset path")
   parser.add_argument('--device',
@@ -196,3 +200,31 @@ def attach_fusible_args(parser=argparse.ArgumentParser()):
                       help='beta1 for adam. default=0.5')
   return parser
 
+
+default_conf = {
+    "name" : "Resnet18",
+    "normal_block": "BasicBlock",
+    "serial_block": "SerialBasicBlock",
+    "arch" : {
+        "layers" : [2, 2, 2, 2],
+        "run_in_serial": [
+            [False, False],
+            [False, False],
+            [False, False],
+            [False, False],
+            [False, False]
+        ]
+    }
+}
+
+def generate_ensemble_config(serial_num):
+    conf = copy.deepcopy(default_conf)
+    block = 0
+    layer = 0
+    while serial_num > 0:
+        serial_num  -= 1
+        conf["arch"]["run_in_serial"][block][layer] = True
+        layer += 1
+        block += layer // 2
+        layer %= 2
+    return conf

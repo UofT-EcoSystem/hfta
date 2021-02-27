@@ -130,14 +130,17 @@ class PartiallyFusedAdadelta(PartiallyFusedOptimizer):
       weight_decay=0,
       B=1,
   ):
-    fused_adadelta = Adadelta(
-        fused_params,
-        lr=lr,
-        rho=rho,
-        eps=eps,
-        weight_decay=weight_decay,
-        B=B,
-    )
+    if len(list(fused_params)) == 0:
+      fused_adadelta = None
+    else:
+      fused_adadelta = Adadelta(
+          fused_params,
+          lr=lr,
+          rho=rho,
+          eps=eps,
+          weight_decay=weight_decay,
+          B=B,
+      )
     unfused_adadelta = [
         torch.optim.Adadelta(
             params,

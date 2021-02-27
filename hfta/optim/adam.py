@@ -190,15 +190,18 @@ class PartiallyFusedAdam(PartiallyFusedOptimizer):
       amsgrad=False,
       B=1,
   ):
-    fused_adam = Adam(
-        fused_params,
-        lr=lr,
-        betas=betas,
-        eps=eps,
-        weight_decay=weight_decay,
-        amsgrad=amsgrad,
-        B=B,
-    )
+    if len(list(fused_params)) == 0:
+      fused_adam = None
+    else:
+      fused_adam = Adam(
+          fused_params,
+          lr=lr,
+          betas=betas,
+          eps=eps,
+          weight_decay=weight_decay,
+          amsgrad=amsgrad,
+          B=B,
+      )
     unfused_adams = [
         torch.optim.Adam(
             params,
