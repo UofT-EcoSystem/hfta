@@ -34,6 +34,7 @@ def main(args):
   random.seed(args.seed)
   np.random.seed(args.seed)
   torch.manual_seed(args.seed)
+  track_running_stats=(args.device != 'xla')
   if args.device == 'cuda':
     assert torch.cuda.is_available()
     torch.backends.cudnn.benchmark = True
@@ -56,7 +57,8 @@ def main(args):
 
   normal_block = str_to_class(model_config["normal_block"])
   serial_block = str_to_class(model_config["serial_block"])
-  model = ResNetEnsemble(model_config["arch"], normal_block, serial_block, num_classes=10, B=B).to(device)
+  model = ResNetEnsemble(model_config["arch"], normal_block, serial_block, 
+            num_classes=10, B=B, track_running_stats=track_running_stats).to(device)
 
   if len(model.unfused_layers) > 0:
     model.unfused_to(device)

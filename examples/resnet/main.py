@@ -42,6 +42,7 @@ def main(args):
   random.seed(args.seed)
   np.random.seed(args.seed)
   torch.manual_seed(args.seed)
+  track_running_stats=(args.device != 'xla')
   if args.device == 'cuda':
     assert torch.cuda.is_available()
     torch.backends.cudnn.benchmark = True
@@ -58,14 +59,14 @@ def main(args):
 
   B = len(args.lr) if args.hfta else 0
 
-  model = Resnet18(num_classes=10, B=B).to(device)
+  model = Resnet18(num_classes=10, B=B, track_running_stats=track_running_stats).to(device)
   if not args.convergence_test:
     if B == 0 and args.save_init_model:
       torch.save(model, args.model_dir)
     if args.load_init_model:
       model.init_load([args.model_dir] * max(1, B))
   print('B={} lr={}'.format(B, args.lr))
-
+  
   optimizer = get_hfta_optim_for(optim.Adadelta, B=B)(
       model.parameters(),
       lr=args.lr if B > 0 else args.lr[0],
