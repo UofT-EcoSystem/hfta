@@ -190,7 +190,8 @@ class PartiallyFusedAdam(PartiallyFusedOptimizer):
       amsgrad=False,
       B=1,
   ):
-    if len(list(fused_params)) == 0:
+    fused_params = list(fused_params)
+    if len(fused_params) == 0:
       fused_adam = None
     else:
       fused_adam = Adam(

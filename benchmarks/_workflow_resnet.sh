@@ -8,7 +8,7 @@ _workflow_resnet_ensemble () {
   local i
   for ((i=0; i<${repeats}; i++)); do
     python benchmarks/resnet.py \
-      --outdir_root ${OUTDIR_ROOT}/resnet/run${i} \
+      --outdir_root ${OUTDIR_ROOT}/resnet/run_ensemble${i} \
       --epochs ${epochs} \
       --iters-per-epoch ${iters_per_epoch} \
       --dataroot datasets/ \
@@ -73,6 +73,20 @@ workflow_resnet_ensemble () {
   _workflow_resnet_ensemble ${repeats}
 }
 
+workflow_convergence () {
+  local epochs=40
+  local iters_per_epoch=1000
+
+  python benchmarks/resnet.py \
+    --outdir_root ${OUTDIR_ROOT}/resnet/run_convergence \
+    --epochs ${epochs} \
+    --iters-per-epoch ${iters_per_epoch} \
+    --dataroot datasets/ \
+    --device ${DEVICE} \
+    --device-model ${DEVICE_MODEL} \
+    --convergence
+}
+
 plot_resnet () {
   _plot_speedups_resnet
   if [ "${DEVICE}" == "cuda" ]; then
@@ -80,3 +94,20 @@ plot_resnet () {
   fi
 }
 
+plot_resnet_ensemble () {
+  local outdirs=()
+  for outdir in ${OUTDIR_ROOT}/resnet/run_ensemble*/
+  do
+    python ./examples/resnet/plot_ensemble.py \
+      --outdir ${outdir}
+  done
+}
+
+plot_resnet_convergence () {
+  local outdir=${OUTDIR_ROOT}/resnet/run_convergence/
+  python ./examples/resnet/plot_convergence.py \
+    --device ${DEVICE}\
+    --device-model ${DEVICE_MODEL} \
+    --prec fp32 \
+    --outdir ${OUTDIR_ROOT}/resnet/run_convergence/
+}

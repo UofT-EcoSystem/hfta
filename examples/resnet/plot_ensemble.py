@@ -5,17 +5,19 @@ import os
 import pandas as pd
 from hfta.workflow.timing import _calculate_throughputs, _LINESTYLES, _COLORS
 
-def get_thoughput(root_path, precs, start=0, end=10,  normalize=True, devide="cuda"):
+def get_thoughput(args, precs, start=0, end=10,  normalize=True, devide="cuda"):
   throughputs = {}
   throughputs["serial num"] = np.array(range(start, end + 1))
+  ensemble_root = os.path.join(args.outdir, "ensemble", args.device, args.device_model)
+  serial_root = os.path.join(args.outdir, args.device, args.device_model)
   for prec in precs:
-    serial_path = os.path.join(root_path, prec, 'serial')
+    serial_path = os.path.join(serial_root, prec, 'serial')
     timing_df = pd.read_csv(os.path.join(serial_path, "timing.csv"))
     throughputs["serial:{}".format(prec)] = _calculate_throughputs([timing_df, ], devide)
 
     ensemble_throughputs = []
     for i in range(start, end + 1):
-      end_outdir_path = os.path.join(root_path, prec, "ensemble", 'serial{}'.format(i))
+      end_outdir_path = os.path.join(ensemble_root, prec, 'serial{}'.format(i))
       timing_df = pd.read_csv(os.path.join(end_outdir_path, "timing.csv"))
       ensemble_throughputs.append(_calculate_throughputs([timing_df, ], devide))
     throughputs["hfta:{}".format(prec)] = np.array(ensemble_throughputs)
@@ -61,9 +63,8 @@ def polt_thoughtput(throughputs, precs, save_path):
   df.to_csv(os.path.join(save_path, "throughputs.csv"))
 
 def main(args):
-  output_root = os.path.join(args.outdir, args.device, args.device_model)
-  throughputs = get_thoughput(output_root, args.precs)
-  polt_thoughtput(throughputs, args.precs, args.save_dir if args.save_dir is not None else output_root)
+  throughputs = get_thoughput(args, args.precs)
+  polt_thoughtput(throughputs, args.precs, args.save_dir if args.save_dir is not None else args.outdir)
   pass
 
 

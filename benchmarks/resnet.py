@@ -12,21 +12,29 @@ from hfta.workflow.dcgm_monitor import DcgmMonitor, dcgm_monitor_start, dcgm_mon
 
 
 def ensemble_workflow(args, trial_func):
-  args.enable_dcgm = False
-  TEST_B = 2
-  precs = _init_precs(args.device, args.device_model) if args.precs is None else args.precs
-  outdir = os.path.join(args.outdir_root, "ensemble", args.device, args.device_model)
+  TEST_B = 30  # for batch_size=128 on v100-16G
+  precs = _init_precs(args.device,
+                      args.device_model) if args.precs is None else args.precs
+  outdir = os.path.join(args.outdir_root, "ensemble", args.device,
+                        args.device_model)
   for prec in precs:
-    for serial_num in range(10, -1, -1):
+    for serial_num in range(11):
       output_dir = os.path.join(outdir, prec, "serial{}".format(serial_num))
       Path(output_dir).mkdir(parents=True, exist_ok=True)
       if args.enable_dcgm and args.device == 'cuda':
         monitor = DcgmMonitor(args.device_model)
         monitor_thread = dcgm_monitor_start(monitor, output_dir)
-      print("{}: running experiment with {} serial layers".format(prec, serial_num))
+      print("{}: running experiment with {} serial layers".format(
+          prec, serial_num))
       succeeded = False
       try:
-        succeeded = trial_func(TEST_B, args.device, prec, args.epochs, args.iters_per_epoch, output_dir, serial_num=serial_num)
+        succeeded = trial_func(TEST_B,
+                               args.device,
+                               prec,
+                               args.epochs,
+                               args.iters_per_epoch,
+                               output_dir,
+                               serial_num=serial_num)
       finally:
         if args.enable_dcgm and args.device == 'cuda':
           dcgm_monitor_stop(monitor, monitor_thread)
@@ -35,11 +43,74 @@ def ensemble_workflow(args, trial_func):
         exit(-1)
 
 
+def convergence_workflow(args, trial_func):
+  lrs = ["0.002", "0.001", "0.0005"]
+  TEST_B = len(lrs)  # for batch_size=128
+  gammas = [str(random.uniform(0.3, 0.99)) for _ in range(TEST_B)]
+  precs = [
+      "fp32",
+  ]
+  outdir = os.path.join(args.outdir_root, args.device, args.device_model)
+  device = args.device
+  epoch = args.epochs
+  iters = args.iters_per_epoch
+  for prec in precs:
+    output_dir = os.path.join(outdir, prec)
+    model_path = os.path.join(output_dir, "model.pth")
+    Path(output_dir).mkdir(parents=True, exist_ok=True)
+
+    extra_flag = [
+        "--convergence_test", "--save_init_model", "--model_dir", model_path
+    ]
+    extra_flag.extend(["--lr", lrs[0], "--gamma", gammas[0]])
+    succeeded = trial_func(0,
+                           device,
+                           prec,
+                           epoch,
+                           iters,
+                           None,
+                           extra_flags=extra_flag)
+    if not succeeded:
+      print("Failed to save initial model")
+      exit(-1)
+
+    extra_flag = [
+        "--convergence_test", "--load_init_model", "--model_dir", model_path
+    ]
+    for i in range(TEST_B):
+      output_dir_now = os.path.join(output_dir, "serial",
+                                    "lr_{}".format(lrs[i]))
+      Path(output_dir_now).mkdir(parents=True, exist_ok=True)
+      extra_flag_now = extra_flag + ["--lr", lrs[i], "--gamma", gammas[i]]
+      succeeded &= trial_func(0,
+                              device,
+                              prec,
+                              epoch,
+                              iters,
+                              output_dir_now,
+                              extra_flags=extra_flag_now)
+    output_dir_now = os.path.join(output_dir, "hfta")
+    Path(output_dir_now).mkdir(parents=True, exist_ok=True)
+    extra_flag.extend(["--lr"] + lrs + ["--gamma"] + gammas)
+    succeeded = trial_func(TEST_B,
+                           args.device,
+                           prec,
+                           args.epochs,
+                           args.iters_per_epoch,
+                           output_dir_now,
+                           extra_flags=extra_flag)
+
+    if not succeeded:
+      print("Failed to run resnet with convergence_test")
+      exit(-1)
+
+
 def main(args):
   work_path = os.path.join(
-                os.path.abspath(os.path.expanduser(os.path.dirname(__file__))),
-                '../examples/resnet/',
-            )
+      os.path.abspath(os.path.expanduser(os.path.dirname(__file__))),
+      '../examples/resnet/',
+  )
+
   def trial(
       B=None,
       device=None,
@@ -49,8 +120,8 @@ def main(args):
       outdir=None,
       env_map=None,
       serial_num=0,
+      extra_flags=None,
   ):
-
     cmd = [
         'python',
         'main_ensemble.py' if args.ensemble else 'main.py',
@@ -70,18 +141,20 @@ def main(args):
       cmd.extend(['--outf', outdir])
     if prec == 'amp' and device == 'cuda':
       cmd.append('--amp')
+    if args.convergence and extra_flags is not None:
+      cmd.extend(extra_flags)
 
     num_hps = max(B, 1)
-    hyperparam_strs = {
-        'lr': [str(random.uniform(0.1, 10)) for _ in range(num_hps)],
-        'gamma': [str(random.uniform(0.3, 0.99)) for _ in range(num_hps)],
-    }
-
-    for flag, vals in hyperparam_strs.items():
-      if B > 0:
-        cmd.extend(['--{}'.format(flag)] + vals)
-      else:
-        cmd.extend(['--{}'.format(flag), vals[0]])
+    if extra_flags is None or (not ("--lr" in extra_flags)):
+      hyperparam_strs = {
+          'lr': [str(random.uniform(0.1, 10)) for _ in range(num_hps)],
+          'gamma': [str(random.uniform(0.3, 0.99)) for _ in range(num_hps)],
+      }
+      for flag, vals in hyperparam_strs.items():
+        if B > 0:
+          cmd.extend(['--{}'.format(flag)] + vals)
+        else:
+          cmd.extend(['--{}'.format(flag), vals[0]])
 
     if B > 0:
       cmd.append('--hfta')
@@ -107,30 +180,38 @@ def main(args):
       succeeded = False
     return succeeded
 
+  if args.convergence:
+    convergence_workflow(args, trial)
+    logging.info('Done!')
+    return
+
   if args.ensemble:
     ensemble_workflow(args, trial)
+    args.modes = [
+        "serial",
+    ]
+
+  if workflow(
+      trial_func=trial,
+      device=args.device,
+      device_model=args.device_model,
+      outdir_prefix=args.outdir_root,
+      precs=args.precs,
+      modes=args.modes,
+      enable_dcgm=args.enable_dcgm,
+      enable_tpu_profiler=args.enable_tpu_profiler,
+      tpu_profiler_waittime=10,
+      tpu_profiler_duration=10,
+      epochs=args.epochs,
+      iters_per_epoch=args.iters_per_epoch,
+      concurrent_runner_kwargs=args.concurrent_runner_kwargs,
+      mps_runner_kwargs=args.mps_runner_kwargs,
+      hfta_runner_kwargs=args.hfta_runner_kwargs,
+      mig_runner_kwargs=args.mig_runner_kwargs,
+  ):
+    logging.info('Done!')
   else:
-      if workflow(
-          trial_func=trial,
-          device=args.device,
-          device_model=args.device_model,
-          outdir_prefix=args.outdir_root,
-          precs=args.precs,
-          modes=args.modes,
-          enable_dcgm=args.enable_dcgm,
-          enable_tpu_profiler=args.enable_tpu_profiler,
-          tpu_profiler_waittime=10,
-          tpu_profiler_duration=10,
-          epochs=args.epochs,
-          iters_per_epoch=args.iters_per_epoch,
-          concurrent_runner_kwargs=args.concurrent_runner_kwargs,
-          mps_runner_kwargs=args.mps_runner_kwargs,
-          hfta_runner_kwargs=args.hfta_runner_kwargs,
-          mig_runner_kwargs=args.mig_runner_kwargs,
-      ):
-        logging.info('Done!')
-      else:
-        logging.error('Failed!')
+    logging.error('Failed!')
 
 
 def attach_args(
@@ -160,10 +241,16 @@ def attach_args(
       help='path to the shapenet parts dataset',
   )
   parser.add_argument(
-    '--ensemble',
-    action='store_true',
-    default=False,
-    help='run resnet ensemble experiment',
+      '--ensemble',
+      action='store_true',
+      default=False,
+      help='run resnet ensemble experiment',
+  )
+  parser.add_argument(
+      '--convergence',
+      action='store_true',
+      default=False,
+      help='run resnet convergence experiment',
   )
   parser = attach_workflow_args(parser)
   return parser

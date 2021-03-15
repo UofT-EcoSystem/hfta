@@ -130,7 +130,8 @@ class PartiallyFusedAdadelta(PartiallyFusedOptimizer):
       weight_decay=0,
       B=1,
   ):
-    if len(list(fused_params)) == 0:
+    fused_params = list(fused_params)
+    if len(fused_params) == 0:
       fused_adadelta = None
     else:
       fused_adadelta = Adadelta(

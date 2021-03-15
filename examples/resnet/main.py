@@ -1,6 +1,8 @@
 import argparse
 import random
 import torch
+import os
+import pandas as pd
 import numpy as np
 import torch.optim as optim
 import torch.cuda.amp as amp
@@ -19,8 +21,8 @@ from hfta.workflow import EpochTimer
 from model import Resnet18
 
 
-def attach_args(parser=argparse.ArgumentParser(
-    description='Resnet Model Example')):
+def attach_args(
+    parser=argparse.ArgumentParser(description='Resnet Model Example')):
   parser = attach_default_args(parser)
   parser.add_argument('--convergence_test',
                       action='store_true',
@@ -34,15 +36,19 @@ def attach_args(parser=argparse.ArgumentParser(
                       action='store_true',
                       default=False,
                       help='For Saving the current Model')
-  parser.add_argument('--model_dir', type=str, default=None, help='model file path')
+  parser.add_argument('--model_dir',
+                      type=str,
+                      default=None,
+                      help='model file path')
   return parser
+
 
 def main(args):
   print(args)
   random.seed(args.seed)
   np.random.seed(args.seed)
   torch.manual_seed(args.seed)
-  track_running_stats=(args.device != 'xla')
+  track_running_stats = (args.device != 'xla')
   if args.device == 'cuda':
     assert torch.cuda.is_available()
     torch.backends.cudnn.benchmark = True
@@ -59,14 +65,17 @@ def main(args):
 
   B = len(args.lr) if args.hfta else 0
 
-  model = Resnet18(num_classes=10, B=B, track_running_stats=track_running_stats).to(device)
+  model = Resnet18(num_classes=10, B=B,
+                   track_running_stats=track_running_stats).to(device)
   if not args.convergence_test:
     if B == 0 and args.save_init_model:
       torch.save(model, args.model_dir)
+      print("model saved! exiting...")
+      exit(0)
     if args.load_init_model:
       model.init_load([args.model_dir] * max(1, B))
   print('B={} lr={}'.format(B, args.lr))
-  
+
   optimizer = get_hfta_optim_for(optim.Adadelta, B=B)(
       model.parameters(),
       lr=args.lr if B > 0 else args.lr[0],
@@ -76,15 +85,28 @@ def main(args):
   epoch_timer = EpochTimer()
   for epoch in range(args.epochs):
     epoch_timer.epoch_start(epoch)
-    num_samples_per_epoch, epoch_losses = train(args, model, device, train_loader, optimizer, epoch,  B, save_loss=args.convergence_test, scaler=scaler)
+    num_samples_per_epoch, epoch_losses = train(args,
+                                                model,
+                                                device,
+                                                train_loader,
+                                                optimizer,
+                                                epoch,
+                                                B,
+                                                save_loss=args.convergence_test,
+                                                scaler=scaler)
     epoch_timer.epoch_stop(num_samples_per_epoch)
     if args.convergence_test:
       all_losses.append(epoch_losses)
     print('Epoch {} took {} s!'.format(epoch, epoch_timer.epoch_latency(epoch)))
 
   if args.convergence_test:
-    all_losses = torch.cat(all_losses, 0).cpu().numpy()
-    np.savetxt(args.outf, all_losses, delimiter=",")
+    all_losses = torch.cat(all_losses, 0).transpose(0, 1).cpu().numpy()
+    print(all_losses.shape)
+    loss_dict = {}
+    for i, lr in enumerate(args.lr):
+      loss_dict[lr] = all_losses[i]
+    data = pd.DataFrame(loss_dict)
+    data.to_csv(os.path.join(args.outf, "convergence.csv"))
   else:
     if args.device == 'xla':
       print(met.metrics_report())

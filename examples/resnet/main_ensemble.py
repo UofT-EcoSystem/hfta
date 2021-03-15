@@ -57,7 +57,7 @@ def main(args):
 
   normal_block = str_to_class(model_config["normal_block"])
   serial_block = str_to_class(model_config["serial_block"])
-  model = ResNetEnsemble(model_config["arch"], normal_block, serial_block, 
+  model = ResNetEnsemble(model_config["arch"], normal_block, serial_block,
             num_classes=10, B=B, track_running_stats=track_running_stats).to(device)
 
   if len(model.unfused_layers) > 0:

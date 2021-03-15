@@ -509,7 +509,7 @@ class ResNetEnsemble(nn.Module):
                 nn.BatchNorm2d, B=B, track_running_stats=self.track_running_stats)
       self.unfused_layers.append(current_block)
     else:
-      current_block = block(self.inplanes, planes, stride, downsample, 
+      current_block = block(self.inplanes, planes, stride, downsample,
                 norm_layer, B=B, track_running_stats=self.track_running_stats)
     layers.append(current_block)
 
@@ -520,7 +520,7 @@ class ResNetEnsemble(nn.Module):
                 B=B, track_running_stats=self.track_running_stats)
         self.unfused_layers.append(current_block)
       else:
-        current_block = block(self.inplanes, planes, norm_layer=norm_layer, 
+        current_block = block(self.inplanes, planes, norm_layer=norm_layer,
                 B=B, track_running_stats=self.track_running_stats)
       layers.append(current_block)
 
