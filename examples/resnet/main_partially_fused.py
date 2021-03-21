@@ -5,9 +5,8 @@ import numpy as np
 import torch.optim as optim
 import torch.cuda.amp as amp
 
-from model import ResNetEnsemble, str_to_class
-from utils import train, test, init_dataloader, attach_default_args, generate_ensemble_config
-
+from model import PartiallyFusedResNet, str_to_class
+from utils import train, test, init_dataloader, attach_default_args, generate_partially_fused_config
 
 try:
   import torch_xla
@@ -19,22 +18,23 @@ except ImportError:
 from hfta.optim import get_hfta_optim_for
 from hfta.workflow import EpochTimer
 
+
 def attach_args(parser=argparse.ArgumentParser(
-    description='Resnet Ensemble Model Example')):
+    description='Resnet PartiallyFused Model Example')):
   parser = attach_default_args(parser)
-  parser.add_argument(
-      '--serial_num',
-      type=int,
-      default=0,
-      help='how many config to generate, not need for serial')
+  parser.add_argument('--serial_num',
+                      type=int,
+                      default=0,
+                      help='how many config to generate, not need for serial')
   return parser
+
 
 def main(args):
   print(args)
   random.seed(args.seed)
   np.random.seed(args.seed)
   torch.manual_seed(args.seed)
-  track_running_stats=(args.device != 'xla')
+  track_running_stats = (args.device != 'xla')
   if args.device == 'cuda':
     assert torch.cuda.is_available()
     torch.backends.cudnn.benchmark = True
@@ -47,18 +47,22 @@ def main(args):
   else:
     scaler = None
 
-
   train_loader, test_loader = init_dataloader(args)
 
   B = len(args.lr) if args.hfta else 0
-  model_config = generate_ensemble_config(args.serial_num)
+  model_config = generate_partially_fused_config(args.serial_num)
   print("Model config:", model_config)
-
 
   normal_block = str_to_class(model_config["normal_block"])
   serial_block = str_to_class(model_config["serial_block"])
-  model = ResNetEnsemble(model_config["arch"], normal_block, serial_block,
-            num_classes=10, B=B, track_running_stats=track_running_stats).to(device)
+  model = PartiallyFusedResNet(
+      model_config["arch"],
+      normal_block,
+      serial_block,
+      num_classes=10,
+      B=B,
+      track_running_stats=track_running_stats,
+  ).to(device)
 
   if len(model.unfused_layers) > 0:
     model.unfused_to(device)
@@ -69,14 +73,21 @@ def main(args):
     )
   else:
     optimizer = get_hfta_optim_for(optim.Adadelta, B=B)(
-      model.parameters(),
-      lr=args.lr if B > 0 else args.lr[0],
+        model.parameters(),
+        lr=args.lr if B > 0 else args.lr[0],
     )
 
   epoch_timer = EpochTimer()
   for epoch in range(args.epochs):
     epoch_timer.epoch_start(epoch)
-    num_samples_per_epoch, _ = train(args, model, device, train_loader, optimizer, epoch, B, scaler=scaler)
+    num_samples_per_epoch, _ = train(args,
+                                     model,
+                                     device,
+                                     train_loader,
+                                     optimizer,
+                                     epoch,
+                                     B,
+                                     scaler=scaler)
     epoch_timer.epoch_stop(num_samples_per_epoch)
     print('Epoch {} took {} s!'.format(epoch, epoch_timer.epoch_latency(epoch)))
 

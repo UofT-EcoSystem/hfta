@@ -78,9 +78,9 @@ prepare_transformer() {
 }
 
 prepare_cifar10() {
-  if [ ! -d "datasets/cifar-10-batches-py" ]; then
-    wget https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz
-    tar -xf cifar-10-python.tar.gz
-    mv cifar-10-batches-py datasets 
+  if [ ! -d "datasets/cifar10/cifar-10-batches-py" ]; then
+    mkdir datasets/cifar10
+    wget https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz -O datasets/cifar10/cifar-10-python.tar.gz
+    tar -xf datasets/cifar10/cifar-10-python.tar.gz -C datasets/cifar10
   fi
 }

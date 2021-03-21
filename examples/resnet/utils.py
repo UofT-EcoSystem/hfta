@@ -11,7 +11,15 @@ except ImportError:
   pass
 
 
-def train(args, model, device, train_loader, optimizer, epoch, B, save_loss=False, scaler=None):
+def train(args,
+          model,
+          device,
+          train_loader,
+          optimizer,
+          epoch,
+          B,
+          save_loss=False,
+          scaler=None):
   model.train()
   avg_loss = torch.zeros(max(1, B)).to(device)
   all_loss = []
@@ -73,11 +81,11 @@ def train(args, model, device, train_loader, optimizer, epoch, B, save_loss=Fals
                               reduction='none').view(-1, N).mean(dim=1)
       loss_str = ["%.5f" % e for e in avg_loss]
       print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {}'.format(
-        epoch,
-        batch_idx * len(data),
-        len(train_loader.dataset),
-        100. * batch_idx / len(train_loader),
-        loss_str,
+          epoch,
+          batch_idx * len(data),
+          len(train_loader.dataset),
+          100. * batch_idx / len(train_loader),
+          loss_str,
       ))
   if save_loss:
     return num_samples_per_epoch, torch.cat(all_loss)
@@ -118,19 +126,15 @@ def test(model, device, test_loader, B):
 
 def init_dataloader(args, shuffle=False):
   kwargs = {'batch_size': args.batch_size, "num_workers": args.workers}
-  kwargs.update({'pin_memory': True, 'shuffle': shuffle}, )
+  kwargs.update({'pin_memory': True, 'shuffle': shuffle},)
 
   transform = transforms.Compose([
-    transforms.ToTensor(),
-    transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                         std=[0.229, 0.224, 0.225])
+      transforms.ToTensor(),
+      transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                           std=[0.229, 0.224, 0.225])
   ])
-  dataset1 = datasets.CIFAR10(args.dataset,
-                              train=True,
-                              transform=transform)
-  dataset2 = datasets.CIFAR10(args.dataset,
-                              train=False,
-                              transform=transform)
+  dataset1 = datasets.CIFAR10(args.dataset, train=True, transform=transform)
+  dataset2 = datasets.CIFAR10(args.dataset, train=False, transform=transform)
   train_loader = torch.utils.data.DataLoader(dataset1, **kwargs)
   test_loader = torch.utils.data.DataLoader(dataset2, **kwargs)
   return train_loader, test_loader
@@ -178,11 +182,12 @@ def attach_default_args(parser=argparse.ArgumentParser()):
                       metavar='N',
                       help='report interval')
   parser.add_argument('--seed', type=int, default=1117, help='Seed')
-  parser.add_argument('--warmup-data-loading',
-                      default=False,
-                      action='store_true',
-                      help='go over the training and validation loops without performing '
-                      'forward and backward passes')
+  parser.add_argument(
+      '--warmup-data-loading',
+      default=False,
+      action='store_true',
+      help='go over the training and validation loops without performing '
+      'forward and backward passes')
   return attach_fusible_args(parser)
 
 
@@ -202,29 +207,25 @@ def attach_fusible_args(parser=argparse.ArgumentParser()):
 
 
 default_conf = {
-    "name" : "Resnet18",
+    "name": "Resnet18",
     "normal_block": "BasicBlock",
     "serial_block": "SerialBasicBlock",
-    "arch" : {
-        "layers" : [2, 2, 2, 2],
-        "run_in_serial": [
-            [False, False],
-            [False, False],
-            [False, False],
-            [False, False],
-            [False, False]
-        ]
+    "arch": {
+        "layers": [2, 2, 2, 2],
+        "run_in_serial": [[False, False], [False, False], [False, False],
+                          [False, False], [False, False]]
     }
 }
 
-def generate_ensemble_config(serial_num):
-    conf = copy.deepcopy(default_conf)
-    block = 0
-    layer = 0
-    while serial_num > 0:
-        serial_num  -= 1
-        conf["arch"]["run_in_serial"][block][layer] = True
-        layer += 1
-        block += layer // 2
-        layer %= 2
-    return conf
+
+def generate_partially_fused_config(serial_num):
+  conf = copy.deepcopy(default_conf)
+  block = 0
+  layer = 0
+  while serial_num > 0:
+    serial_num -= 1
+    conf["arch"]["run_in_serial"][block][layer] = True
+    layer += 1
+    block += layer // 2
+    layer %= 2
+  return conf

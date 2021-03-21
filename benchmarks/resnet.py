@@ -11,11 +11,11 @@ from hfta.workflow.utils import _init_precs
 from hfta.workflow.dcgm_monitor import DcgmMonitor, dcgm_monitor_start, dcgm_monitor_stop
 
 
-def ensemble_workflow(args, trial_func):
-  TEST_B = 30  # for batch_size=128 on v100-16G
+def partially_fused_workflow(args, trial_func):
+  TEST_B = args.partially_fused_models
   precs = _init_precs(args.device,
                       args.device_model) if args.precs is None else args.precs
-  outdir = os.path.join(args.outdir_root, "ensemble", args.device,
+  outdir = os.path.join(args.outdir_root, "partially_fused", args.device,
                         args.device_model)
   for prec in precs:
     for serial_num in range(11):
@@ -44,7 +44,7 @@ def ensemble_workflow(args, trial_func):
 
 
 def convergence_workflow(args, trial_func):
-  lrs = ["0.002", "0.001", "0.0005"]
+  lrs = args.convergence_lrs
   TEST_B = len(lrs)  # for batch_size=128
   gammas = [str(random.uniform(0.3, 0.99)) for _ in range(TEST_B)]
   precs = [
@@ -63,13 +63,8 @@ def convergence_workflow(args, trial_func):
         "--convergence_test", "--save_init_model", "--model_dir", model_path
     ]
     extra_flag.extend(["--lr", lrs[0], "--gamma", gammas[0]])
-    succeeded = trial_func(0,
-                           device,
-                           prec,
-                           epoch,
-                           iters,
-                           None,
-                           extra_flags=extra_flag)
+    print("Saving initinal model")
+    succeeded = trial_func(0, device, prec, 0, 0, None, extra_flags=extra_flag)
     if not succeeded:
       print("Failed to save initial model")
       exit(-1)
@@ -77,7 +72,9 @@ def convergence_workflow(args, trial_func):
     extra_flag = [
         "--convergence_test", "--load_init_model", "--model_dir", model_path
     ]
+
     for i in range(TEST_B):
+      print("Running Pytorch example with lr={}".format(lrs[i]))
       output_dir_now = os.path.join(output_dir, "serial",
                                     "lr_{}".format(lrs[i]))
       Path(output_dir_now).mkdir(parents=True, exist_ok=True)
@@ -92,6 +89,7 @@ def convergence_workflow(args, trial_func):
     output_dir_now = os.path.join(output_dir, "hfta")
     Path(output_dir_now).mkdir(parents=True, exist_ok=True)
     extra_flag.extend(["--lr"] + lrs + ["--gamma"] + gammas)
+    print("Running HFTA example")
     succeeded = trial_func(TEST_B,
                            args.device,
                            prec,
@@ -124,7 +122,7 @@ def main(args):
   ):
     cmd = [
         'python',
-        'main_ensemble.py' if args.ensemble else 'main.py',
+        'main_partially_fused.py' if args.partially_fused else 'main.py',
         '--dataset',
         args.dataroot,
         '--epochs',
@@ -135,7 +133,7 @@ def main(args):
         device,
     ]
 
-    if args.ensemble:
+    if args.partially_fused:
       cmd.extend(["--serial_num", str(serial_num)])
     if outdir is not None:
       cmd.extend(['--outf', outdir])
@@ -185,8 +183,8 @@ def main(args):
     logging.info('Done!')
     return
 
-  if args.ensemble:
-    ensemble_workflow(args, trial)
+  if args.partially_fused:
+    partially_fused_workflow(args, trial)
     args.modes = [
         "serial",
     ]
@@ -241,17 +239,29 @@ def attach_args(
       help='path to the shapenet parts dataset',
   )
   parser.add_argument(
-      '--ensemble',
+      '--partially-fused',
       action='store_true',
       default=False,
-      help='run resnet ensemble experiment',
+      help='run resnet partially_fused experiment',
   )
+  parser.add_argument(
+      '--partially-fused-models',
+      type=int,
+      default=30,  # default for V100-16G
+      help='Number of models for partially fused experiments')
   parser.add_argument(
       '--convergence',
       action='store_true',
       default=False,
       help='run resnet convergence experiment',
   )
+  parser.add_argument(
+      '--convergence-lrs',
+      type=float,
+      default=["0.002", "0.001", "0.0005"],
+      nargs='*',
+      help='convergence learning rate, default=["0.002", "0.001", "0.0005"]')
+
   parser = attach_workflow_args(parser)
   return parser
 

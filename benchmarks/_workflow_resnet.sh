@@ -1,6 +1,6 @@
 #!/bin/bash
 
-_workflow_resnet_ensemble () {
+_workflow_resnet_partially_fused () {
   local repeats=$1
   local epochs=5
   local iters_per_epoch=1000
@@ -8,13 +8,13 @@ _workflow_resnet_ensemble () {
   local i
   for ((i=0; i<${repeats}; i++)); do
     python benchmarks/resnet.py \
-      --outdir_root ${OUTDIR_ROOT}/resnet/run_ensemble${i} \
+      --outdir_root ${OUTDIR_ROOT}/resnet/run_partially_fused${i} \
       --epochs ${epochs} \
       --iters-per-epoch ${iters_per_epoch} \
-      --dataroot datasets/ \
+      --dataroot datasets/cifar10/ \
       --device ${DEVICE} \
       --device-model ${DEVICE_MODEL} \
-      --ensemble
+      --partially-fused
   done
 }
 
@@ -29,7 +29,7 @@ _workflow_resnet () {
       --outdir_root ${OUTDIR_ROOT}/resnet/run${i} \
       --epochs ${epochs} \
       --iters-per-epoch ${iters_per_epoch} \
-      --dataroot datasets/ \
+      --dataroot datasets/cifar10/ \
       --device ${DEVICE} \
       --device-model ${DEVICE_MODEL}
   done
@@ -68,20 +68,20 @@ workflow_resnet () {
   _workflow_resnet ${repeats}
 }
 
-workflow_resnet_ensemble () {
+workflow_resnet_partially_fused () {
   local repeats=${1:-"3"}
-  _workflow_resnet_ensemble ${repeats}
+  _workflow_resnet_partially_fused ${repeats}
 }
 
 workflow_convergence () {
-  local epochs=40
+  local epochs=100
   local iters_per_epoch=1000
 
   python benchmarks/resnet.py \
     --outdir_root ${OUTDIR_ROOT}/resnet/run_convergence \
     --epochs ${epochs} \
     --iters-per-epoch ${iters_per_epoch} \
-    --dataroot datasets/ \
+    --dataroot datasets/cifar10/ \
     --device ${DEVICE} \
     --device-model ${DEVICE_MODEL} \
     --convergence
@@ -94,11 +94,11 @@ plot_resnet () {
   fi
 }
 
-plot_resnet_ensemble () {
+plot_resnet_partially_fused () {
   local outdirs=()
-  for outdir in ${OUTDIR_ROOT}/resnet/run_ensemble*/
+  for outdir in ${OUTDIR_ROOT}/resnet/run_partially_fused*/
   do
-    python ./examples/resnet/plot_ensemble.py \
+    python ./examples/resnet/plot_partially_fused.py \
       --outdir ${outdir}
   done
 }
@@ -106,8 +106,9 @@ plot_resnet_ensemble () {
 plot_resnet_convergence () {
   local outdir=${OUTDIR_ROOT}/resnet/run_convergence/
   python ./examples/resnet/plot_convergence.py \
-    --device ${DEVICE}\
+    --device ${DEVICE} \
     --device-model ${DEVICE_MODEL} \
     --prec fp32 \
+    --merge-size 100 \
     --outdir ${OUTDIR_ROOT}/resnet/run_convergence/
 }

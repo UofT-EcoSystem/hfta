@@ -86,7 +86,6 @@ class BasicBlock(nn.Module):
       sequence_snatch_parameters(self.downsample, other.downsample, b)
 
 
-
 class Bottleneck(nn.Module):
   # Bottleneck in torchvision places the stride for downsampling at 3x3 convolution(self.conv2)
   # while original implementation places the stride at the first 1x1 convolution(self.conv1)
@@ -113,7 +112,8 @@ class Bottleneck(nn.Module):
     self.conv2 = conv3x3(planes, planes, stride, B=B)
     self.bn2 = norm_layer(planes, track_running_stats=track_running_stats)
     self.conv3 = conv1x1(planes, planes * self.expansion, B=B)
-    self.bn3 = norm_layer(planes * self.expansion, track_running_stats=track_running_stats)
+    self.bn3 = norm_layer(planes * self.expansion,
+                          track_running_stats=track_running_stats)
     self.relu = nn.ReLU(inplace=True)
     self.downsample = downsample
     self.stride = stride
@@ -137,7 +137,6 @@ class Bottleneck(nn.Module):
     out = self.relu(out)
 
     return out
-
 
   def snatch_parameters(self, other, b):
     self.conv1.snatch_parameters(other.conv1, b)
@@ -169,10 +168,11 @@ class SerialBasicBlock(nn.Module):
     if norm_layer is None:
       norm_layer = nn.BatchNorm2d
 
-    self.conv1 = [
-        conv3x3(inplanes, planes, stride, B=0) for _ in range(B)
+    self.conv1 = [conv3x3(inplanes, planes, stride, B=0) for _ in range(B)]
+    self.bn1 = [
+        norm_layer(planes, track_running_stats=track_running_stats)
+        for _ in range(B)
     ]
-    self.bn1 = [norm_layer(planes, track_running_stats=track_running_stats) for _ in range(B)]
     self.relu = [nn.ReLU(inplace=True) for _ in range(B)]
     self.conv2 = [conv3x3(planes, planes, B=0) for _ in range(B)]
     self.bn2 = [nn.BatchNorm2d(planes) for _ in range(B)]
@@ -204,7 +204,9 @@ class SerialBasicBlock(nn.Module):
     if self.hfta:
       x = x.transpose(0, 1)
     else:
-      x = [x,]
+      x = [
+          x,
+      ]
 
     identity = x
     out = [self.conv1[i](x[i]) for i in range(self.B)]
@@ -216,7 +218,8 @@ class SerialBasicBlock(nn.Module):
     out = [self.bn2[i](out[i]) for i in range(self.B)]
 
     for i in range(self.B):
-      out[i] += identity[i] if self.downsample is None else self.downsample[i](x[i])
+      out[i] += identity[i] if self.downsample is None else self.downsample[i](
+          x[i])
     out = [self.relu[i](out[i]) for i in range(self.B)]
 
     if self.hfta:
@@ -239,7 +242,7 @@ class ResNet(nn.Module):
                B=1):
     super(ResNet, self).__init__()
     self.B = B
-    self.track_running_stats=track_running_stats
+    self.track_running_stats = track_running_stats
     norm_layer = get_hfta_op_for(nn.BatchNorm2d, B)
     self._conv_layer = get_hfta_op_for(nn.Conv2d,
                                        B).func if B > 0 else nn.Conv2d
@@ -256,7 +259,8 @@ class ResNet(nn.Module):
                                                  stride=2,
                                                  padding=3,
                                                  bias=False)
-    self.bn1 = norm_layer(self.inplanes, track_running_stats=track_running_stats)
+    self.bn1 = norm_layer(self.inplanes,
+                          track_running_stats=track_running_stats)
     self.relu = nn.ReLU(inplace=True)
     self.maxpool = get_hfta_op_for(nn.MaxPool2d, B=B)(kernel_size=3,
                                                       stride=2,
@@ -288,7 +292,8 @@ class ResNet(nn.Module):
     if stride != 1 or self.inplanes != planes * block.expansion:
       downsample = nn.Sequential(
           conv1x1(self.inplanes, planes * block.expansion, stride, B=B),
-          norm_layer(planes * block.expansion, track_running_stats=self.track_running_stats),
+          norm_layer(planes * block.expansion,
+                     track_running_stats=self.track_running_stats),
       )
 
     layers = []
@@ -353,13 +358,10 @@ class ResNet(nn.Module):
         self.snatch_parameters(others, i)
 
 
-class SpecialFC(nn.Module):
+class SerialLinear(nn.Module):
 
-  def __init__(self,
-               C_in,
-               C_out,
-               B=1):
-    super(SpecialFC, self).__init__()
+  def __init__(self, C_in, C_out, B=1):
+    super(SerialLinear, self).__init__()
     self.hfta = (B > 0)
     self.B = max(1, B)
     self.fc = [nn.Linear(C_in, C_out) for _ in range(B)]
@@ -371,7 +373,9 @@ class SpecialFC(nn.Module):
 
   def forward(self, x):
     if not self.hfta:
-      x = [x,]
+      x = [
+          x,
+      ]
 
     out = [self.fc[i](x[i]) for i in range(self.B)]
 
@@ -383,19 +387,26 @@ class SpecialFC(nn.Module):
 
     return out
 
-class SpecialConvBlock(nn.Module):
+
+class SerialConvBlock(nn.Module):
 
   def __init__(self, B, in_C, out_C):
-    super(SpecialConvBlock, self).__init__()
+    super(SerialConvBlock, self).__init__()
     self.hfta = (B > 0)
     self.B = max(1, B)
     self.unfused_parameters = []
-    self.conv = [nn.Conv2d(in_C, out_C, kernel_size=7, stride=2, padding=3, bias=False) for _ in range(B)]
+    self.conv = [
+        nn.Conv2d(in_C, out_C, kernel_size=7, stride=2, padding=3, bias=False)
+        for _ in range(B)
+    ]
     self.bn1 = [nn.BatchNorm2d(out_C) for _ in range(B)]
     self.relu = [nn.ReLU(inplace=True) for _ in range(B)]
-    self.maxpool = [nn.MaxPool2d(kernel_size=3,stride=2,padding=1) for _ in range(B)]
+    self.maxpool = [
+        nn.MaxPool2d(kernel_size=3, stride=2, padding=1) for _ in range(B)
+    ]
     for i in range(B):
-      self.unfused_parameters.append(list(self.conv[i].parameters()) + list(self.bn1[i].parameters()))
+      self.unfused_parameters.append(
+          list(self.conv[i].parameters()) + list(self.bn1[i].parameters()))
 
   def to(self, *args, **kwargs):
     for i in range(self.B):
@@ -408,7 +419,9 @@ class SpecialConvBlock(nn.Module):
     if self.hfta:
       x = x.transpose(0, 1)
     else:
-      x = [x,]
+      x = [
+          x,
+      ]
 
     out = [self.conv[i](x[i]) for i in range(self.B)]
     out = [self.bn1[i](out[i]) for i in range(self.B)]
@@ -424,8 +437,7 @@ class SpecialConvBlock(nn.Module):
     return out
 
 
-
-class ResNetEnsemble(nn.Module):
+class PartiallyFusedResNet(nn.Module):
   unfused_layers = []
 
   def __init__(self,
@@ -436,7 +448,7 @@ class ResNetEnsemble(nn.Module):
                zero_init_residual=False,
                track_running_stats=True,
                B=1):
-    super(ResNetEnsemble, self).__init__()
+    super(PartiallyFusedResNet, self).__init__()
     layers = config["layers"]
     run_in_serial = config["run_in_serial"]
     self.B = B
@@ -451,25 +463,54 @@ class ResNetEnsemble(nn.Module):
 
     self.inplanes = 64
     if run_in_serial[4][1]:
-      self.convBlock = SpecialConvBlock(B, 3, self.inplanes)
+      self.convBlock = SerialConvBlock(B, 3, self.inplanes)
       self.unfused_layers.append(self.convBlock)
     else:
       self.convBlock = nn.Sequential(
-        get_hfta_op_for(nn.Conv2d, B=B)(3, self.inplanes, kernel_size=7,  stride=2, padding=3, bias=False),
-        norm_layer(self.inplanes, track_running_stats=track_running_stats),
-        nn.ReLU(inplace=True),
-        get_hfta_op_for(nn.MaxPool2d, B=B)(kernel_size=3, stride=2, padding=1)
-      )
+          get_hfta_op_for(nn.Conv2d, B=B)(3,
+                                          self.inplanes,
+                                          kernel_size=7,
+                                          stride=2,
+                                          padding=3,
+                                          bias=False),
+          norm_layer(self.inplanes, track_running_stats=track_running_stats),
+          nn.ReLU(inplace=True),
+          get_hfta_op_for(nn.MaxPool2d, B=B)(kernel_size=3, stride=2,
+                                             padding=1))
 
-    self.layer1 = self._make_layer(block, serial_block, 64, layers[0], run_in_serial[0], B=B)
-    self.layer2 = self._make_layer(block, serial_block, 128, layers[1], run_in_serial[1], stride=2, B=B)
-    self.layer3 = self._make_layer(block, serial_block, 256, layers[2], run_in_serial[2], stride=2, B=B)
-    self.layer4 = self._make_layer(block, serial_block, 512, layers[3], run_in_serial[3], stride=2, B=B)
+    self.layer1 = self._make_layer(block,
+                                   serial_block,
+                                   64,
+                                   layers[0],
+                                   run_in_serial[0],
+                                   B=B)
+    self.layer2 = self._make_layer(block,
+                                   serial_block,
+                                   128,
+                                   layers[1],
+                                   run_in_serial[1],
+                                   stride=2,
+                                   B=B)
+    self.layer3 = self._make_layer(block,
+                                   serial_block,
+                                   256,
+                                   layers[2],
+                                   run_in_serial[2],
+                                   stride=2,
+                                   B=B)
+    self.layer4 = self._make_layer(block,
+                                   serial_block,
+                                   512,
+                                   layers[3],
+                                   run_in_serial[3],
+                                   stride=2,
+                                   B=B)
     if run_in_serial[4][0]:
-      self.fc = SpecialFC(512 * block.expansion, num_classes, B=B)
+      self.fc = SerialLinear(512 * block.expansion, num_classes, B=B)
       self.unfused_layers.append(self.fc)
     else:
-      self.fc = get_hfta_op_for(nn.Linear, B)(512 * block.expansion, num_classes)
+      self.fc = get_hfta_op_for(nn.Linear, B)(512 * block.expansion,
+                                              num_classes)
 
     for m in self.modules():
       if isinstance(m, self._conv_layer):
@@ -486,7 +527,14 @@ class ResNetEnsemble(nn.Module):
         if isinstance(m, BasicBlock):
           nn.init.constant_(m.bn2.weight, 0)
 
-  def _make_layer(self, block, serial_block, planes, blocks, run_in_serial, stride=1, B=1):
+  def _make_layer(self,
+                  block,
+                  serial_block,
+                  planes,
+                  blocks,
+                  run_in_serial,
+                  stride=1,
+                  B=1):
     downsample = None
     norm_layer = get_hfta_op_for(nn.BatchNorm2d, B)
     assert block.expansion == serial_block.expansion
@@ -494,34 +542,52 @@ class ResNetEnsemble(nn.Module):
     if stride != 1 or self.inplanes != planes * block.expansion:
       if self.B > 0 and run_in_serial[0]:
         downsample = nn.Sequential(
-          conv1x1(self.inplanes, planes * block.expansion, stride, B=0),
-          nn.BatchNorm2d(planes * block.expansion),
+            conv1x1(self.inplanes, planes * block.expansion, stride, B=0),
+            nn.BatchNorm2d(planes * block.expansion),
         )
       else:
         downsample = nn.Sequential(
             conv1x1(self.inplanes, planes * block.expansion, stride, B=B),
-            norm_layer(planes * block.expansion, track_running_stats=self.track_running_stats),
+            norm_layer(planes * block.expansion,
+                       track_running_stats=self.track_running_stats),
         )
 
     layers = []
     if self.B > 0 and run_in_serial[0]:
-      current_block = serial_block(self.inplanes, planes, stride, downsample,
-                nn.BatchNorm2d, B=B, track_running_stats=self.track_running_stats)
+      current_block = serial_block(self.inplanes,
+                                   planes,
+                                   stride,
+                                   downsample,
+                                   nn.BatchNorm2d,
+                                   B=B,
+                                   track_running_stats=self.track_running_stats)
       self.unfused_layers.append(current_block)
     else:
-      current_block = block(self.inplanes, planes, stride, downsample,
-                norm_layer, B=B, track_running_stats=self.track_running_stats)
+      current_block = block(self.inplanes,
+                            planes,
+                            stride,
+                            downsample,
+                            norm_layer,
+                            B=B,
+                            track_running_stats=self.track_running_stats)
     layers.append(current_block)
 
     self.inplanes = planes * block.expansion
     for i in range(1, blocks):
       if self.B > 0 and run_in_serial[i]:
-        current_block = serial_block(self.inplanes, planes, norm_layer=nn.BatchNorm2d,
-                B=B, track_running_stats=self.track_running_stats)
+        current_block = serial_block(
+            self.inplanes,
+            planes,
+            norm_layer=nn.BatchNorm2d,
+            B=B,
+            track_running_stats=self.track_running_stats)
         self.unfused_layers.append(current_block)
       else:
-        current_block = block(self.inplanes, planes, norm_layer=norm_layer,
-                B=B, track_running_stats=self.track_running_stats)
+        current_block = block(self.inplanes,
+                              planes,
+                              norm_layer=norm_layer,
+                              B=B,
+                              track_running_stats=self.track_running_stats)
       layers.append(current_block)
 
     return nn.Sequential(*layers)
@@ -549,12 +615,12 @@ class ResNetEnsemble(nn.Module):
   def get_unfused_parameters(self):
     params = [[] for _ in range(self.B)]
     for layer in self.unfused_layers:
-        params = [params[i] + layer.unfused_parameters[i] for i in range (self.B)]
+      params = [params[i] + layer.unfused_parameters[i] for i in range(self.B)]
     return params
 
   def unfused_to(self, *args, **kwargs):
-      for layer in self.unfused_layers:
-          layer.to(*args, **kwargs)
+    for layer in self.unfused_layers:
+      layer.to(*args, **kwargs)
 
   def snatch_parameters(self, others, b):
     self.conv1.snatch_parameters(others.conv1, b)
@@ -585,6 +651,7 @@ def sequence_snatch_parameters(seq: nn.Sequential, others: nn.Sequential, b):
       sequence_snatch_parameters(layer, others_layer, b)
     else:
       layer.snatch_parameters(others_layer, b)
+
 
 def Resnet18(**kwargs):
   return ResNet(BasicBlock, [2, 2, 2, 2], **kwargs)
