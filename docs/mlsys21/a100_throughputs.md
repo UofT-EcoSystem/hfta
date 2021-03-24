@@ -199,6 +199,7 @@ benchmarks/workflow.sh" expects 3 arguments in total
 - DEVICE: {cuda, tpu}, default is `cuda`
 - DEVICE_MODEL: {a100, v100, etc, or v2/v3 for tpu}, default is `v100`
 - OUTDIR_ROOT: {the output directory of the benchmarked results}, default is `benchmarks`
+
 The first two arguments, are often needed in every run,. Please refer to the script for the usage of the arguments
 ```bash
 # The command below will set the target device and device model to be CUDA, A100,
