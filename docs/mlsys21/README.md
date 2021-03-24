@@ -1,6 +1,6 @@
 # MLSys'21 Artifacts
 
-We document how the experiments reported in 
+We document how the experiments reported in
 [Horizontally Fused Training Array: An Effective Hardware Utilization Squeezer for Training Novel Deep Learning Models](https://arxiv.org/abs/2102.02344)
 can be reproduced by following the steps below.
 
