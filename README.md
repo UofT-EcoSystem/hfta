@@ -1,6 +1,6 @@
 # hfta
 
-<img src="docs/intro.gif" alt="Horizontally Fused Training Array" width="700">
+<img src="docs/images/intro.gif" alt="Horizontally Fused Training Array" width="700">
 
 --------------------------------------------------------------------------------
 
