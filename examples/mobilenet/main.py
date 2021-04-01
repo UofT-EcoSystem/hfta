@@ -119,7 +119,10 @@ def attach_args(
   parser.add_argument(
       '--dataroot',
       type=str,
-      default='../../datasets/cifar10',
+      default=os.path.join(
+          os.path.abspath(os.path.expanduser(os.path.dirname(__file__))),
+          '../../datasets/cifar10',
+      ),
       help='folder that stores input dataset',
   )
   parser.add_argument(
