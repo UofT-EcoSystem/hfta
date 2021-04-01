@@ -71,7 +71,8 @@ Epoch 4 took 6.071732521057129 s!
 Running validation loop ...
 ```
 
-3. Run the same MobileNet-V2 example with HFTA.
+3. Run the same MobileNet-V2 example with HFTA, testing three learning rates on 
+   the same accelerator simultaneously.
 ```bash
 # NVIDIA GPUs:
 $ python hfta/examples/mobilenet/main.py --version v2 --epochs 5 --amp --eval --dataset cifar10 --device cuda --lr 0.01 0.03 0.1 --hfta
