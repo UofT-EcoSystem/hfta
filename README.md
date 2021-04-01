@@ -1,6 +1,6 @@
 # hfta
 
-<img src="docs/mlsys21/HFTA_MLSys21_thumbnail.png" alt="Horizontally Fused Training Array" width="400">
+<img src="docs/intro.gif" alt="Horizontally Fused Training Array" width="700">
 
 --------------------------------------------------------------------------------
 
