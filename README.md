@@ -17,10 +17,6 @@ _same types_ of operators with the _same shapes_ (e.g., think about what happens
 you adjust the learning rate). Therefore, with HFTA, you can improve the hardware utilization by training 
 an array of models (as a single fused model) on the same accelerator at the same time.
 
-Please checkout our paper ([Horizontally Fused Training Array: An Effective Hardware Utilization Squeezer 
-for Training Novel Deep Learning Models](https://arxiv.org/abs/2102.02344)) and 
-[MLSys'21 talk](https://youtu.be/zJ5UUb0J9tI) for more insights behind HFTA.
-
 ## Installation
 
 ### From Source
@@ -37,6 +33,14 @@ TODO
 ## Getting Started
 
 TODO
+
+## Publication
+
+- Fourth Conference on Machine Learning and Systems ([MLSys'21](https://mlsys.org/))
+  - [Horizontally Fused Training Array: An Effective Hardware Utilization Squeezer for Training Novel Deep Learning Models](https://mlsys.org/virtual/2021/oral/1610)
+    - [Proceedings](https://proceedings.mlsys.org/paper/2021/hash/a97da629b098b75c294dffdc3e463904-Abstract.html).
+    - [Talk](https://youtu.be/zJ5UUb0J9tI).
+    - [arXiv](https://arxiv.org/abs/2102.02344)
 
 ## Contributing
 
