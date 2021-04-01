@@ -41,6 +41,7 @@ TODO
     - [Proceedings](https://proceedings.mlsys.org/paper/2021/hash/a97da629b098b75c294dffdc3e463904-Abstract.html).
     - [Talk](https://youtu.be/zJ5UUb0J9tI).
     - [arXiv](https://arxiv.org/abs/2102.02344)
+    - Please refer to the [MLSys'21 Artifact Reproduction Guide](docs/mlsys21/README.md) on how to reproduce the reported experiments.
 
 ## Contributing
 
