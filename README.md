@@ -1,6 +1,6 @@
 # Horizontally Fused Training Array
 
-<img src="docs/images/intro.gif" alt="Horizontally Fused Training Array" width="700">
+![Logo](/docs/images/intro.gif "Horizontally Fused Training Array")
 
 --------------------------------------------------------------------------------
 
