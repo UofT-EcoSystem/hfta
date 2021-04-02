@@ -6,19 +6,19 @@
 
 _**H**orizontally **F**used **T**raining **A**rray_ (HFTA) is a
 [PyTorch](https://pytorch.org/) extension library that helps machine learning
-and deep learning researchers and practitioners to develop **horizontally 
-fused** models. Each fused model is functionally/mathematically equivalent to 
+and deep learning researchers and practitioners to develop **horizontally
+fused** models. Each fused model is functionally/mathematically equivalent to
 **an array of models** with **similar/same operators**.
 
 Why developing horizontally fused models at all, you ask? This is because
-sometimes training a certain class of models can **under-utilize** the 
-underlying accelerators. Such hardware under-utilization could then be **greatly 
-amplified** if you train this class of models **repetitively** (e.g., when you 
-tune its hyper-parameters). Fortunately, in such use cases, the models under 
-repetitive training often have the **same types** of operators with the **same 
-shapes** (e.g., think about what happens to the operators when you adjust the 
-learning rate). Therefore, with HFTA, you can improve the hardware utilization 
-by training an array of models (as a single fused model) on the same accelerator 
+sometimes training a certain class of models can **under-utilize** the
+underlying accelerators. Such hardware under-utilization could then be **greatly
+amplified** if you train this class of models **repetitively** (e.g., when you
+tune its hyper-parameters). Fortunately, in such use cases, the models under
+repetitive training often have the **same types** of operators with the **same
+shapes** (e.g., think about what happens to the operators when you adjust the
+learning rate). Therefore, with HFTA, you can improve the hardware utilization
+by training an array of models (as a single fused model) on the same accelerator
 at the same time.
 
 HFTA is **device-agnostic**. So far, we tested HFTA and observed significant
@@ -37,7 +37,7 @@ and [A100](https://www.nvidia.com/en-us/data-center/a100/) GPUs and Google
 $ pip install git+https://github.com/UofT-EcoSystem/hfta
 
 # Google Cloud TPU v3:
-$ pip install git+https://github.com/UofT-EcoSystem/hfta[xla]
+$ pip install git+https://github.com/UofT-EcoSystem/hfta#egg=hfta[xla]
 ```
 
 ### From PyPI
