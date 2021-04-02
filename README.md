@@ -49,7 +49,7 @@ TODO
 1. Clone the HFTA's repo.
 
     ```bash
-    # Clone the repo
+    # Clone the repo (mainly for fetching the benchmark code)
     $ git clone https://github.com/UofT-EcoSystem/hfta
     ```
 
