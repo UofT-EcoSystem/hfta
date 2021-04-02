@@ -6,22 +6,22 @@
 
 _**H**orizontally **F**used **T**raining **A**rray_ (HFTA) is a
 [PyTorch](https://pytorch.org/) extension library that helps machine learning
-and deep learning researchers and practitioners to develop horizontally fused
-models. Each fused model is functionally/mathematically equivalent to an array
-of models with similar/same operators.
+and deep learning researchers and practitioners to develop **horizontally 
+fused** models. Each fused model is functionally/mathematically equivalent to 
+**an array of models** with **similar/same operators**.
 
 Why developing horizontally fused models at all, you ask? This is because
-sometimes training a certain class of models can _under-utilize_ the underlying
-accelerators. Such hardware under-utilization could then be _greatly amplified_
-if you train this class of models _repetitively_ (e.g., when you tune its
-hyper-parameters). Fortunately, in such use cases, the models under repetitive
-training often have the _same types_ of operators with the _same shapes_ (e.g.,
-think about what happens to the operators when you adjust the learning rate).
-Therefore, with HFTA, you can improve the hardware utilization by training an
-array of models (as a single fused model) on the same accelerator at the same
-time.
+sometimes training a certain class of models can **under-utilize** the 
+underlying accelerators. Such hardware under-utilization could then be **greatly 
+amplified** if you train this class of models **repetitively** (e.g., when you 
+tune its hyper-parameters). Fortunately, in such use cases, the models under 
+repetitive training often have the **same types** of operators with the **same 
+shapes** (e.g., think about what happens to the operators when you adjust the 
+learning rate). Therefore, with HFTA, you can improve the hardware utilization 
+by training an array of models (as a single fused model) on the same accelerator 
+at the same time.
 
-HFTA is device-agnostic. So far, we tested HFTA and observed significant
+HFTA is **device-agnostic**. So far, we tested HFTA and observed significant
 training performance and hardware utilization improvements on NVIDIA
 [V100](https://www.nvidia.com/en-us/data-center/v100/),
 [RTX6000](https://www.nvidia.com/en-us/design-visualization/quadro/rtx-6000/)
