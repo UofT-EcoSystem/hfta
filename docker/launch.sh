@@ -3,7 +3,7 @@
 set -e
 
 DATASETS=${1:-"${HOME}/datasets"}
-TAG=${2:-"0.1"}
+URL=${2:-"hfta:dev"}
 
 docker run \
   --privileged \
@@ -16,5 +16,5 @@ docker run \
   -v $(pwd):$(pwd) \
   -v ${DATASETS}:${DATASETS} \
   -w $(pwd) \
-  hfta:${TAG} \
+  ${URL} \
   /bin/bash
