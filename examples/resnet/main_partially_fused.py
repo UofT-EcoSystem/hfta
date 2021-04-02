@@ -6,7 +6,8 @@ import torch.optim as optim
 import torch.cuda.amp as amp
 
 from model import PartiallyFusedResNet, str_to_class
-from utils import train, test, init_dataloader, attach_default_args, generate_partially_fused_config
+from utils import (train, test, init_dataloader, attach_default_args,
+                   generate_partially_fused_config)
 
 try:
   import torch_xla

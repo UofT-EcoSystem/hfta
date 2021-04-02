@@ -204,9 +204,7 @@ class SerialBasicBlock(nn.Module):
     if self.hfta:
       x = x.transpose(0, 1)
     else:
-      x = [
-          x,
-      ]
+      x = [x]
 
     identity = x
     out = [self.conv1[i](x[i]) for i in range(self.B)]
@@ -373,9 +371,7 @@ class SerialLinear(nn.Module):
 
   def forward(self, x):
     if not self.hfta:
-      x = [
-          x,
-      ]
+      x = [x]
 
     out = [self.fc[i](x[i]) for i in range(self.B)]
 
@@ -419,9 +415,7 @@ class SerialConvBlock(nn.Module):
     if self.hfta:
       x = x.transpose(0, 1)
     else:
-      x = [
-          x,
-      ]
+      x = [x]
 
     out = [self.conv[i](x[i]) for i in range(self.B)]
     out = [self.bn1[i](out[i]) for i in range(self.B)]

@@ -212,8 +212,13 @@ default_conf = {
     "serial_block": "SerialBasicBlock",
     "arch": {
         "layers": [2, 2, 2, 2],
-        "run_in_serial": [[False, False], [False, False], [False, False],
-                          [False, False], [False, False]]
+        "run_in_serial": [
+            [False, False],
+            [False, False],
+            [False, False],
+            [False, False],
+            [False, False],
+        ]
     }
 }
 

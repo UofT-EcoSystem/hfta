@@ -7,8 +7,19 @@ import matplotlib.pyplot as plt
 
 def main():
   parser = argparse.ArgumentParser(description='Plot Convergence Curve.')
-  parser.add_argument('--merge-size', type=int, default=1)
-  parser.add_argument('--outdir', type=str, required=True)
+  parser.add_argument(
+      '--outdir',
+      type=str,
+      required=True,
+      help="Output path that are used for the training process",
+  )
+  parser.add_argument(
+      '--loss-smooth-width',
+      type=int,
+      default=1,
+      help='''The number of iterations will be merged to smooth the curve.
+              It must be a divisor of the number of total iterations.''',
+  )
   parser.add_argument(
       '--device',
       type=str,

@@ -137,7 +137,10 @@ dmypy.json
 # datasets
 datasets/shapenetcore_partanno_segmentation_benchmark_v0/
 datasets/lsun
+datasets/cifar10
 
 # outputs
 benchmarks/pointnet/
 benchmarks/dcgan/
+benchmarks/resnet/
+benchmarks/mobilenet/
