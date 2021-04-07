@@ -141,3 +141,4 @@ datasets/lsun
 # outputs
 benchmarks/pointnet/
 benchmarks/dcgan/
+benchmarks/resnet/
