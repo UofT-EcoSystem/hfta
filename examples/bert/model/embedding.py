@@ -42,9 +42,9 @@ class BERTEmbedding(nn.Module):
     self.dropout = get_hfta_op_for(nn.Dropout, B)(p=dropout)
     self.embed_size = embed_size
 
-  def forward(self, sequence, postion_label, segment_label):
+  def forward(self, sequence, position_label, segment_label):
     x = self.token(sequence)
-    p = self.position(postion_label)
+    p = self.position(position_label)
     s = self.segment(segment_label)
     x += p + s
     return self.dropout(x)

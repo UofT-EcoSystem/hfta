@@ -26,6 +26,12 @@ _pointnet_warmup_data () {
 _workflow_pointnet () {
   local task=$1
   local repeats=$2
+  local hfta_dry_run_repeats=1
+
+  # For TPU, we need to retry to find a stable max_B
+  if [ "${DEVICE}" == "xla" ]; then
+    hfta_dry_run_repeats=3
+  fi
 
   _pointnet_warmup_data ${task}
 
@@ -48,7 +54,7 @@ _workflow_pointnet () {
       --task ${task} \
       --device ${DEVICE} \
       --device-model ${DEVICE_MODEL} \
-      --enable-tpu-profiler
+      --hfta-dry-run-repeats ${hfta_dry_run_repeats}
   done
 }
 

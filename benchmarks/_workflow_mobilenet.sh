@@ -2,7 +2,6 @@
 
 _mobilenet_warmup_data() {
   local dataset=$1
-  local version=$2
 
   if [ "${dataset}" == "imagenet" ] || [ "${dataset}" == "cifar10" ]; then
     python examples/mobilenet/main.py \
@@ -34,7 +33,7 @@ _workflow_mobilenet() {
     hfta_dry_run_repeats=3
   fi
 
-  _mobilenet_warmup_data ${dataset} ${version}
+  _mobilenet_warmup_data ${dataset}
 
   local i
   for ((i=0; i<${repeats}; i++)); do
@@ -44,7 +43,7 @@ _workflow_mobilenet() {
       --outdir_root ${OUTDIR_ROOT}/mobilenet/run${i}/ \
       --epochs ${epochs} \
       --iters-per-epoch ${exp_iters} \
-      --batch-size ${batch_size} \
+      --batch_size ${batch_size} \
       --dataroot ./datasets/${dataset} \
       --device ${DEVICE} \
       --device-model ${DEVICE_MODEL} \

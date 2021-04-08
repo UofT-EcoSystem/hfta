@@ -37,6 +37,6 @@ setup(
         'torch>=1.6.0', 'hyperopt'
     ],
     extras_require={
-        'xla': ['plyfile', 'tensorflow'],
+        'xla': ['tensorflow'],
     },
 )

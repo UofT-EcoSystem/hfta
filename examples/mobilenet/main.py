@@ -38,7 +38,7 @@ def attach_args(
       help='version of the MobileNet (default: v3s)',
   )
   parser.add_argument(
-      '--batch-size',
+      '--batch_size',
       type=int,
       default=1024,
       help='input batch size for training (default: 1024)',
@@ -119,7 +119,10 @@ def attach_args(
   parser.add_argument(
       '--dataroot',
       type=str,
-      default='../../datasets/cifar10',
+      default=os.path.join(
+          os.path.abspath(os.path.expanduser(os.path.dirname(__file__))),
+          '../../datasets/cifar10',
+      ),
       help='folder that stores input dataset',
   )
   parser.add_argument(

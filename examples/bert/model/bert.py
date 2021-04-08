@@ -14,7 +14,7 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 
-
+from torch._C import device, dtype
 import torch.nn as nn
 import torch
 import torch.nn.functional as F
@@ -70,7 +70,7 @@ class BERT(nn.Module):
     # attention masking for padded token
     # torch.ByteTensor([batch_size, 1, seq_len, seq_len)
     if (segment_info == None):
-      segment_info = torch.ones(x.shape)
+      segment_info = torch.ones(x.shape, dtype=torch.long, device=x.device)
     if self.B > 0:
       mask = (x <= 0).unsqueeze(2).repeat(1, 1, x.size(2), 1).unsqueeze(2)
     else:

@@ -27,7 +27,8 @@ prepare_pointnet_cls() {
     --iters-per-epoch 1000 \
     --dataset datasets/shapenetcore_partanno_segmentation_benchmark_v0/ \
     --eval \
-    --warmup-data-loading
+    --warmup-data-loading \
+    --device cpu
 }
 
 prepare_pointnet_seg() {
@@ -36,7 +37,8 @@ prepare_pointnet_seg() {
     --epochs 1 \
     --iters-per-epoch 1000 \
     --dataset datasets/shapenetcore_partanno_segmentation_benchmark_v0/ \
-    --warmup-data-loading
+    --warmup-data-loading \
+    --device cpu
 }
 
 _check_md5(){
