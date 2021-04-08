@@ -16,13 +16,17 @@ class PartiallyFusedOptimizer:
     self._unfused_optimizers = unfused_optimizers
 
   def zero_grad(self):
-    self._fused_optimizer.zero_grad()
+    if self._fused_optimizer is not None:
+      self._fused_optimizer.zero_grad()
     for ufo in self._unfused_optimizers:
       if not _zero_grad_if_cuda(ufo):
         ufo.zero_grad()
 
   def step(self, closure=None):
-    fused_ret = self._fused_optimizer.step(closure=closure)
+    if self._fused_optimizer is not None:
+      fused_ret = self._fused_optimizer.step(closure=closure)
+    else:
+      fused_ret = None
     unfused_rets = [
         ufo.step(closure=closure) for ufo in self._unfused_optimizers
     ]
@@ -30,14 +34,21 @@ class PartiallyFusedOptimizer:
 
   @property
   def param_groups(self):
-    return itertools.chain(
-        self._fused_optimizer.param_groups,
-        *(ufo.param_groups for ufo in self._unfused_optimizers),
-    )
+    if self._fused_optimizer is not None:
+      return itertools.chain(
+          self._fused_optimizer.param_groups,
+          *(ufo.param_groups for ufo in self._unfused_optimizers),
+      )
+    else:
+      return itertools.chain(*(ufo.param_groups for ufo in self._unfused_optimizers))
+
 
   @property
   def fused_param_groups(self):
-    return self._fused_optimizer.param_groups
+    if self._fused_optimizer is not None:
+      return self._fused_optimizer.param_groups
+    else:
+      return []
 
   @property
   def unfused_param_groups(self):

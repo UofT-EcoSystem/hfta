@@ -140,9 +140,11 @@ datasets/wikitext-2
 # outputs
 benchmarks/pointnet/
 benchmarks/dcgan/
+benchmarks/resnet/
 benchmarks/mobilenet/
 benchmarks/transformer/
 benchmarks/bert/
+
 
 #caches
 /examples/dcgan/_cache_*

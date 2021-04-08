@@ -10,3 +10,4 @@ OUTDIR_ROOT=${3:-"benchmarks/"}
 . benchmarks/_workflow_mobilenet.sh
 . benchmarks/_workflow_transformer.sh
 . benchmarks/_workflow_bert.sh
+. benchmarks/_workflow_resnet.sh
