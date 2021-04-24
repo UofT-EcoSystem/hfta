@@ -37,11 +37,11 @@
         <p style="font-size:36px"><b>Horizontally Fused Training Array: An Effective Hardware Utilization Squeezer for Training Novel Deep Learning Models</b></p>
         <br>
         <address>
-            <nobr><a href="http://www.cs.toronto.edu/~wangsh46/" target="_blank">Shang Wang</a><sup>4,1,2</sup>, </nobr>
-            <nobr><a href="" target="_blank">Peiming Yang</a><sup>3,2</sup>, </nobr>
-            <nobr><a href="https://ca.linkedin.com/in/ericzheng1" target="_blank">Yuxuan Zheng</a><sup>5</sup>, </nobr>
-            <nobr><a href="https://ca.linkedin.com/in/xin-nix-li" target="_blank">Xin Li</a><sup>2</sup>, </nobr>
-            <nobr><a href="http://www.cs.toronto.edu/~pekhimenko/" target="_blank">Gennady Pekhimenko</a><sup>1,2</sup> </nobr>
+            <nobr><a href="http://www.cs.toronto.edu/~wangsh46/" target="_blank">Shang Wang</a><sup>4 1 2</sup>, </nobr>
+            <nobr><a href="" target="_blank">Peiming Yang</a><sup>* 3 2</sup>, </nobr>
+            <nobr><a href="https://ca.linkedin.com/in/ericzheng1" target="_blank">Yuxuan Zheng</a><sup>* 5</sup>, </nobr>
+            <nobr><a href="https://ca.linkedin.com/in/xin-nix-li" target="_blank">Xin Li</a><sup>* 2</sup>, </nobr>
+            <nobr><a href="http://www.cs.toronto.edu/~pekhimenko/" target="_blank">Gennady Pekhimenko</a><sup>1 2</sup> </nobr>
             <br>
             <nobr><sup>1</sup>University of Toronto,</nobr>
             <nobr><sup>2</sup>Vector Institute,</nobr>
@@ -49,8 +49,11 @@
             <nobr><sup>4</sup>NVIDIA,</nobr>
             <nobr><sup>5</sup>Intel</nobr>
             <br>
+            <nobr><sup>*</sup>Equal Contribution</nobr>
             <br>
-            <nobr> In <a href="https://mlsys.org/" target="_blank">Proceedings of Machine Learning and Systems 3 (MLSys 2021)</a></nobr>
+            <br>
+            <nobr> In <a href="https://proceedings.mlsys.org/paper/2021" target="_blank">Proceedings of Machine Learning and Systems 3</a> 
+            (<a href="https://mlsys.org/Conferences/2021">MLSys 2021</a>)</nobr>
 <!--            <br>-->
 <!--            <br>-->
 <!--            <nobr>This website is under <strong>construction</strong></nobr>-->
@@ -72,9 +75,12 @@
                     <i class="fas fa-file-alt"> Paper</i>
                 </a>
                 <a href="https://mlsys.org/virtual/2021/oral/1610" class="d-inline-block p-3">
-                    <i class="fas fa-file-powerpoint"> Oral</i>
+                    <i class="fas fa-chalkboard-teacher"> Oral</i>
                 </a>
-                <a href="" class="d-inline-block p-3">
+                <a href="files/MLSys2021_HFTA_clean.pptx" class="d-inline-block p-3">
+                    <i class="fas fa-file-powerpoint"> Slides</i>
+                </a>
+                <a href="images/MLSys2021_HFTA_poster.png" class="d-inline-block p-3">
                     <i class="fas fa-columns"> Poster</i>
                 </a>
                 <a href="https://github.com/UofT-EcoSystem/hfta" class="d-inline-block p-3">
@@ -86,7 +92,7 @@
     
     <div class="row">
         <div class="col text-center">
-            <img height="500" src="images/intro.gif">
+            <img height="300" src="images/intro.gif">
         </div>
     </div>
 
@@ -103,12 +109,12 @@
                 among jobs often have the same types of operators with the same shapes, and (ii) the inter-model horizontal 
                 fusion of such operators is mathematically equivalent to other already well-optimized operators. Thus, to help 
                 DL researchers and practitioners effectively improve the hardware utilization of their novel DL training 
-                workloads, we propose Horizontally Fused Training Array (HFTA). HFTA is a new DL framework extension library 
-                that horizontally fuses the models from different repetitive jobs deeply down to operators and then trains them 
-                simultaneously on a shared accelerator. To show the generality of our solution, we apply HFTA to six DL models 
-                training on state-of-the-art accelerators (GPUs and TPUs). Our results indicate that HFTA is highly effective 
-                in improving hardware utilization and achieves up to 15.1&times; higher training throughput vs. the standard practice 
-                of running each job on a separate accelerator.
+                workloads, we propose <b>H</b>orizontally <b>F</b>used <b>T</b>raining <b>A</b>rray (HFTA). HFTA is a new DL 
+                framework extension library that <i>horizontally fuses</i> the models from different repetitive jobs deeply down
+                to operators and then trains them simultaneously on a shared accelerator. To show the generality of our solution,
+                we apply HFTA to six DL models training on state-of-the-art accelerators (GPUs and TPUs). Our results indicate 
+                that HFTA is highly effective in improving hardware utilization and achieves up to 15.1&times; higher training 
+                throughput vs. the standard practice of running each job on a separate accelerator.
             </p>
         </div>
     </div>
