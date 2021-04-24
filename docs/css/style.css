@@ -14,10 +14,9 @@ h2 {
 .nd-pageheader {
   padding: 2rem 15px;
   margin-bottom: 1.5rem;
-  color: #e4f1fe;
+  color: #ffffff;
   text-align: center;
-  background-color: #9e6e0b;
-  /*background-color: #A83738;*/
+  background-color: #4d3c74;
 }
 
 .nd-pageheader a {
@@ -225,3 +224,4 @@ video::-webkit-media-controls-panel {
 video[controls] {
  margin-bottom: 30px;
 }
+
