@@ -1,4 +1,3 @@
-
 <!doctype html>
 <html>
 
@@ -6,10 +5,8 @@
     <title>Horizontally Fused Training Array: An Effective Hardware Utilization Squeezer for Training Novel Deep Learning Models</title>
 
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.6/css/bootstrap.min.css" rel="stylesheet"
-          integrity="sha384-rwoIResjU2yc3z8GV/NPeZWAv56rSmLldC3R/AZzGRnGxQQKnKkoFVhFQhNUwEyJ" crossorigin="anonymous">
-    <script src="https://code.jquery.com/jquery-3.2.1.min.js"
-            integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.6/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-rwoIResjU2yc3z8GV/NPeZWAv56rSmLldC3R/AZzGRnGxQQKnKkoFVhFQhNUwEyJ" crossorigin="anonymous">
+    <script src="https://code.jquery.com/jquery-3.2.1.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
     <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,400,700" rel="stylesheet">
     <link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
@@ -31,154 +28,167 @@
 </head>
 
 <body class="nd-docs">
-<div class="nd-pageheader">
+    <div class="nd-pageheader">
+        <div class="container">
+            <p class="lead">
+            <p style="font-size:48px"><b>Horizontally Fused Training Array</b></p>
+            <p style="font-size:28px"><b>An Effective Hardware Utilization Squeezer for Training Novel Deep Learning Models</b></p>
+            <br>
+            <address>
+                <nobr>
+                    <a href="http://www.cs.toronto.edu/~wangsh46/" target="_blank" class="d-inline-block p-3">
+                        <img height="100" class="profile-image rounded-circle" src="images/Shang_Wang.JPG" alt="">
+                        <br>
+                        Shang Wang<sup>4 1 2</sup>
+                    </a>
+                </nobr>
+                <nobr>
+                    <a href="https://www.linkedin.com/in/peming-yang-84ba39201/" target="_blank" class="d-inline-block p-3">
+                        <img height="100" class="profile-image rounded-circle" src="images/Peiming_Yang.jpg" alt="">
+                        <br>
+                        Peiming Yang<sup>* 3 2</sup>
+                    </a>
+                </nobr>
+                <nobr>
+                    <a href="https://ca.linkedin.com/in/ericzheng1" target="_blank" class="d-inline-block p-3">
+                        <img height="100" class="profile-image rounded-circle" src="images/Yuxuan_Zheng.jpeg" alt="">
+                        <br>
+                        Yuxuan Zheng<sup>* 5</sup>
+                    </a>
+                </nobr>
+                <nobr>
+                    <a href="https://ca.linkedin.com/in/xin-nix-li" target="_blank" class="d-inline-block p-3">
+                        <img height="100" class="profile-image rounded-circle" src="images/Xin_Li.jpeg" alt="">
+                        <br>
+                        Xin Li<sup>* 2</sup>
+                    </a>
+                </nobr>
+                <nobr>
+                    <a href="http://www.cs.toronto.edu/~pekhimenko/" target="_blank" class="d-inline-block p-3">
+                        <img height="100" class="profile-image rounded-circle" src="images/Gennady_Pekhimenko.jpg" alt="">
+                        <br>
+                        Gennady Pekhimenko<sup>1 2</sup>
+                    </a>
+                </nobr>
+                <br>
+                <nobr><sup>1</sup>University of Toronto</nobr> |
+                <nobr><sup>2</sup>Vector Institute</nobr> |
+                <nobr><sup>3</sup>Shanghai Jiao Tong University</nobr> |
+                <nobr><sup>4</sup>NVIDIA</nobr> |
+                <nobr><sup>5</sup>Intel</nobr>
+                <br>
+                <nobr><sup>*</sup>Equal Contribution</nobr>
+                <br>
+                <br>
+                <nobr>
+                    In <a href="https://proceedings.mlsys.org/paper/2021" target="_blank">Proceedings of Machine Learning and Systems 3</a>
+                    (<a href="https://mlsys.org/Conferences/2021">MLSys 2021</a>)
+                </nobr>
+            </address>
+            </p>
+        </div>
+    </div> <!-- end nd-pageheader -->
+
+
     <div class="container">
-        <p class="lead">
-        <p style="font-size:48px"><b>Horizontally Fused Training Array</b></p>
-        <p style="font-size:28px"><b>An Effective Hardware Utilization Squeezer for Training Novel Deep Learning Models</b></p>
-        <br>
-        <address>
-            <nobr><a href="http://www.cs.toronto.edu/~wangsh46/" target="_blank" class="d-inline-block p-3">
-                <img height="100" class="profile-image rounded-circle" src="images/Shang_Wang.JPG" alt="">
-                <br>
-                Shang Wang<sup>4 1 2</sup>
-            </a></nobr>
-            <nobr><a href="https://www.linkedin.com/in/peming-yang-84ba39201/" target="_blank" class="d-inline-block p-3">
-                <img height="100" class="profile-image rounded-circle" src="images/Peiming_Yang.jpg" alt="">
-                <br>
-                Peiming Yang<sup>* 3 2</sup>
-            </a></nobr>
-            <nobr><a href="https://ca.linkedin.com/in/ericzheng1" target="_blank" class="d-inline-block p-3">
-                <img height="100" class="profile-image rounded-circle" src="images/Yuxuan_Zheng.jpeg" alt="">
-                <br>
-                Yuxuan Zheng<sup>* 5</sup>
-            </a></nobr>
-            <nobr><a href="https://ca.linkedin.com/in/xin-nix-li" target="_blank" class="d-inline-block p-3">
-                <img height="100" class="profile-image rounded-circle" src="images/Xin_Li.jpeg" alt="">
-                <br>
-                Xin Li<sup>* 2</sup>
-            </a></nobr>
-            <nobr><a href="http://www.cs.toronto.edu/~pekhimenko/" target="_blank" class="d-inline-block p-3">
-                <img height="100" class="profile-image rounded-circle" src="images/Gennady_Pekhimenko.jpg" alt="">
-                <br>
-                Gennady Pekhimenko<sup>1 2</sup>
-            </a></nobr>
-            <br>
-            <nobr><sup>1</sup>University of Toronto</nobr> |
-            <nobr><sup>2</sup>Vector Institute</nobr> |
-            <nobr><sup>3</sup>Shanghai Jiao Tong University</nobr> |
-            <nobr><sup>4</sup>NVIDIA</nobr> |
-            <nobr><sup>5</sup>Intel</nobr>
-            <br>
-            <nobr><sup>*</sup>Equal Contribution</nobr>
-            <br>
-            <br>
-            <nobr> In <a href="https://proceedings.mlsys.org/paper/2021" target="_blank">Proceedings of Machine Learning and Systems 3</a> 
-            (<a href="https://mlsys.org/Conferences/2021">MLSys 2021</a>)</nobr>
-<!--            <br>-->
-<!--            <br>-->
-<!--            <nobr>This website is under <strong>construction</strong></nobr>-->
 
-            <!--     <br>-->
-            <!--     <nobr><sup>*</sup>Work done w internship at MIT-HAN lab.</nobr>-->
-        </address>
-        </p>
-    </div>
-</div> <!-- end nd-pageheader -->
-
-
-<div class="container">
-    
-    <div class="row">
-        <div class="col text-center">
-            <p>
-                <a href="https://proceedings.mlsys.org/paper/2021/hash/a97da629b098b75c294dffdc3e463904-Abstract.html" class="d-inline-block p-3">
-                    <i class="fas fa-file-alt"> Paper</i>
-                </a>
-                <a href="https://mlsys.org/virtual/2021/oral/1610" class="d-inline-block p-3">
-                    <i class="fas fa-chalkboard-teacher"> Oral</i>
-                </a>
-                <a href="files/MLSys2021_HFTA_clean.pptx" class="d-inline-block p-3">
-                    <i class="fas fa-file-powerpoint"> Slides</i>
-                </a>
-                <a href="images/MLSys2021_HFTA_poster.png" class="d-inline-block p-3">
-                    <i class="fas fa-columns"> Poster</i>
-                </a>
-                <a href="https://github.com/UofT-EcoSystem/hfta" class="d-inline-block p-3">
-                    <i class="fab fa-github-square"> <b>GitHub</b></i>
-                </a>
-                <a href="mlsys21/" class="d-inline-block p-3">
-                    <i class="fas fa-cubes"> Artifacts</i>
-                </a>
-            </p>
+        <div class="row">
+            <div class="col text-center">
+                <p>
+                    <a href="https://proceedings.mlsys.org/paper/2021/hash/a97da629b098b75c294dffdc3e463904-Abstract.html" class="d-inline-block p-3">
+                        <i class="fas fa-file-alt"> Paper</i>
+                    </a>
+                    <a href="https://mlsys.org/virtual/2021/oral/1610" class="d-inline-block p-3">
+                        <i class="fas fa-chalkboard-teacher"> Oral</i>
+                    </a>
+                    <a href="files/MLSys2021_HFTA_clean.pptx" class="d-inline-block p-3">
+                        <i class="fas fa-file-powerpoint"> Slides</i>
+                    </a>
+                    <a href="images/MLSys2021_HFTA_poster.png" class="d-inline-block p-3">
+                        <i class="fas fa-columns"> Poster</i>
+                    </a>
+                    <a href="https://github.com/UofT-EcoSystem/hfta" class="d-inline-block p-3">
+                        <i class="fab fa-github-square"> <b>GitHub</b></i>
+                    </a>
+                    <a href="mlsys21/" class="d-inline-block p-3">
+                        <i class="fas fa-cubes"> Artifacts</i>
+                    </a>
+                </p>
+            </div>
         </div>
-    </div>
-    
-    <div class="row">
-        <div class="col text-center">
-            <img height="300" src="images/intro.gif">
+
+        <div class="row">
+            <div class="col text-center">
+                <img height="300" src="images/intro.gif">
+            </div>
         </div>
-    </div>
 
-    <div class="row">
-        <div class="col">
-            <h3>Abstract</h3>
-            <p>
-                Driven by the tremendous effort in researching novel deep learning (DL) algorithms, 
-                the training cost of developing new models increases staggeringly in recent years. We analyze GPU cluster usage 
-                statistics from a top research institute for more insights into the hardware efficiency achieved by typical DL 
-                training jobs. Our study reveals that single-accelerator training jobs can dominate the cluster-wide resource 
-                consumption when launched repetitively (e.g., for hyper-parameter tuning) while severely under-utilizing the 
-                hardware. Fortunately, we observe that such workloads have the following unique characteristics: (i) the models 
-                among jobs often have the same types of operators with the same shapes, and (ii) the inter-model horizontal 
-                fusion of such operators is mathematically equivalent to other already well-optimized operators. Thus, to help 
-                DL researchers and practitioners effectively improve the hardware utilization of their novel DL training 
-                workloads, we propose <b>H</b>orizontally <b>F</b>used <b>T</b>raining <b>A</b>rray (HFTA). HFTA is a new DL 
-                framework extension library that <i>horizontally fuses</i> the models from different repetitive jobs deeply down
-                to operators and then trains them simultaneously on a shared accelerator. To show the generality of our solution,
-                we apply HFTA to six DL models training on state-of-the-art accelerators (GPUs and TPUs). Our results indicate 
-                that HFTA is highly effective in improving hardware utilization and achieves up to 15.1&times; higher training 
-                throughput vs. the standard practice of running each job on a separate accelerator.
-            </p>
+        <div class="row">
+            <div class="col">
+                <h3>Abstract</h3>
+                <p>
+                    Driven by the tremendous effort in researching novel deep learning (DL) algorithms,
+                    the training cost of developing new models increases staggeringly in recent years. We analyze GPU cluster usage
+                    statistics from a top research institute for more insights into the hardware efficiency achieved by typical DL
+                    training jobs. Our study reveals that single-accelerator training jobs can dominate the cluster-wide resource
+                    consumption when launched repetitively (e.g., for hyper-parameter tuning) while severely under-utilizing the
+                    hardware. Fortunately, we observe that such workloads have the following unique characteristics: (i) the models
+                    among jobs often have the same types of operators with the same shapes, and (ii) the inter-model horizontal
+                    fusion of such operators is mathematically equivalent to other already well-optimized operators. Thus, to help
+                    DL researchers and practitioners effectively improve the hardware utilization of their novel DL training
+                    workloads, we propose <b>H</b>orizontally <b>F</b>used <b>T</b>raining <b>A</b>rray (HFTA). HFTA is a new DL
+                    framework extension library that <i>horizontally fuses</i> the models from different repetitive jobs deeply down
+                    to operators and then trains them simultaneously on a shared accelerator. To show the generality of our solution,
+                    we apply HFTA to six DL models training on state-of-the-art accelerators (GPUs and TPUs). Our results indicate
+                    that HFTA is highly effective in improving hardware utilization and achieves up to 15.1&times; higher training
+                    throughput vs. the standard practice of running each job on a separate accelerator.
+                </p>
+            </div>
         </div>
-    </div>
 
-    <hr />
+        <hr />
 
-    <div class="row">
-        <div class="col">
-            <h3>What is Horizontally Fused Training Array (HFTA)?</h3>
-            <p><i><b>H</b>orizontally <b>F</b>used <b>T</b>raining <b>A</b>rray</i> (HFTA) is a 
-            <a href="https://pytorch.org/">PyTorch</a> extension library that helps machine learning and deep learning researchers 
-            and practitioners to develop <b>horizontally fused</b> models. Each fused model is functionally/mathematically equivalent 
-            to <b>an array of models</b> with <b>similar/same operators</b>.</p>
+        <div class="row">
+            <div class="col">
+                <h3>What is Horizontally Fused Training Array (HFTA)?</h3>
+                <p>
+                    <i><b>H</b>orizontally <b>F</b>used <b>T</b>raining <b>A</b>rray</i> (HFTA) is a
+                    <a href="https://pytorch.org/">PyTorch</a> extension library that helps machine learning and deep learning researchers
+                    and practitioners to develop <b>horizontally fused</b> models. Each fused model is functionally/mathematically equivalent
+                    to <b>an array of models</b> with <b>similar/same operators</b>.
+                </p>
 
-            <h3>But why do we need HFTA?</h3>
-            <p>Why developing horizontally fused models at all, you ask? This is because sometimes training a certain class of models can 
-            <b>under-utilize</b> the underlying accelerators. Such hardware under-utilization could then be <b>greatly amplified</b> 
-            if you train this class of models <b>repetitively</b> (e.g., when you tune its hyper-parameters). Fortunately, in such 
-            use cases, the models under repetitive training often have the <b>same types</b> of operators with the <b>same shapes</b> 
-            (e.g., think about what happens to the operators when you adjust the learning rate). Therefore, with HFTA, you can improve 
-            the hardware utilization by training an array of models (as a single fused model) on the same accelerator at the same time.</p>
+                <h3>But why do we need HFTA?</h3>
+                <p>
+                    Why developing horizontally fused models at all, you ask? This is because sometimes training a certain class of models can
+                    <b>under-utilize</b> the underlying accelerators. Such hardware under-utilization could then be <b>greatly amplified</b>
+                    if you train this class of models <b>repetitively</b> (e.g., when you tune its hyper-parameters). Fortunately, in such
+                    use cases, the models under repetitive training often have the <b>same types</b> of operators with the <b>same shapes</b>
+                    (e.g., think about what happens to the operators when you adjust the learning rate). Therefore, with HFTA, you can improve
+                    the hardware utilization by training an array of models (as a single fused model) on the same accelerator at the same time.
+                </p>
 
-            <h3>How capable is HFTA?</h3>
-            <p>HFTA is <b>device-agnostic</b>. So far, we tested HFTA and observed significant training performance and hardware 
-            utilization improvements on NVIDIA <a href="https://www.nvidia.com/en-us/data-center/v100/">V100</a>, 
-            <a href="https://www.nvidia.com/en-us/design-visualization/quadro/rtx-6000/">RTX6000</a> and 
-            <a href="https://www.nvidia.com/en-us/data-center/a100/">A100</a> GPUs and Google
-            <a href="https://cloud.google.com/tpu">Cloud TPU v3</a>.</p>
+                <h3>How capable is HFTA?</h3>
+                <p>
+                    HFTA is <b>device-agnostic</b>. So far, we tested HFTA and observed significant training performance and hardware
+                    utilization improvements on NVIDIA <a href="https://www.nvidia.com/en-us/data-center/v100/">V100</a>,
+                    <a href="https://www.nvidia.com/en-us/design-visualization/quadro/rtx-6000/">RTX6000</a> and
+                    <a href="https://www.nvidia.com/en-us/data-center/a100/">A100</a> GPUs and Google
+                    <a href="https://cloud.google.com/tpu">Cloud TPU v3</a>.
+                </p>
 
-            <h3>Wanna learn more about HFTA?</h3>
-            Watching our MLSys'21 talk before diving into <a href="https://arxiv.org/abs/2102.02344">our paper</a> or 
-            <a href="https://github.com/UofT-EcoSystem/hfta">GitHub repo</a> could be very helpful:<br><br>
-            <center class="embed-responsive-16by9">
-                <iframe width="896" height="504" src="https://www.youtube.com/embed/zJ5UUb0J9tI" title="YouTube video player" frameborder="0" 
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-            </center>
+                <h3>Wanna learn more about HFTA?</h3>
+                <p>
+                    Watching our MLSys'21 talk before diving into <a href="https://arxiv.org/abs/2102.02344">our paper</a> or
+                    <a href="https://github.com/UofT-EcoSystem/hfta">GitHub repo</a> could be very helpful:
+                    <center class="embed-responsive-16by9">
+                        <iframe width="896" height="504" src="https://www.youtube.com/embed/zJ5UUb0J9tI" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                    </center>
+                </p>
 
 
-            <h3>Citation</h3>
-            <pre class="highlight">
+                <h3>Citation</h3>
+                <pre class="highlight">
 % TODO: Update the BibTex after pre-proceeding -> proceeding.
 @inproceedings{MLSYS2021_HFTA,
  author = {Shang Wang and Peiming Yang and Yuxuan Zheng and Xin Li and Gennady Pekhimenko},
@@ -187,23 +197,23 @@
  url = {https://proceedings.mlsys.org/paper/2021/file/a97da629b098b75c294dffdc3e463904-Paper.pdf},
  volume = {3},
  year = {2021}
-}</pre>
+}               </pre>
 
-            <hr />
-            <div class="col">
-                <p>
-                    <a href="http://www.cs.toronto.edu/ecosystem/" target="_blank" class="d-inline-block p-3">
-                        <img height="60" src="images/ecosystem.png" data-nothumb>
-                    </a>
-                    <a href="http://www.cs.toronto.edu/" target="_blank" class="d-inline-block p-3">
-                        <img height="60" src="images/UofT_DCS_logo.png" data-nothumb>
-                    </a>
-                </p>
+                <hr />
+                <div class="col">
+                    <p>
+                        <a href="http://www.cs.toronto.edu/ecosystem/" target="_blank" class="d-inline-block p-3">
+                            <img height="60" src="images/ecosystem.png" data-nothumb>
+                        </a>
+                        <a href="http://www.cs.toronto.edu/" target="_blank" class="d-inline-block p-3">
+                            <img height="60" src="images/UofT_DCS_logo.png" data-nothumb>
+                        </a>
+                    </p>
+                </div>
             </div>
-        </div>
-    </div> <!-- row -->
+        </div> <!-- row -->
 
-</div> <!-- container -->
+    </div> <!-- container -->
 
 </body>
 
