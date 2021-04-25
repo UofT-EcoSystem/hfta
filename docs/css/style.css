@@ -225,3 +225,6 @@ video[controls] {
  margin-bottom: 30px;
 }
 
+.profile-image {
+  border: 0.3rem solid rgba(255, 255, 255, 0.2);  
+}
