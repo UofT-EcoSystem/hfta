@@ -148,3 +148,6 @@ benchmarks/bert/
 
 #caches
 /examples/dcgan/_cache_*
+
+# IDE
+.vscode/*
