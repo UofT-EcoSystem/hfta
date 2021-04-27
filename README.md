@@ -101,7 +101,9 @@ without HFTA.
 
 ## Getting Started
 
-TODO
+Check the colab tutorial
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/UofT-EcoSystem/hfta/blob/eric/colab-tutorial/docs/HFTA_PyTorch_Tutorial.ipynb)
 
 ## Publication
 
