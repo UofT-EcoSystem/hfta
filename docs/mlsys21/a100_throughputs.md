@@ -124,6 +124,7 @@ Follow the commands below to prepare and launch the docker image, this will take
 #### Build or pull docker image
 
 You can either build the image from scratch or pull the pre-built image from Docker Hub.
+
 To build the image from scracth:
 ```bash
 # build the image, select nvidia20.06 to work with the A100 GPU.
