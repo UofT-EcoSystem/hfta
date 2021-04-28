@@ -109,7 +109,7 @@ cd hfta
 
 We require two installation files (`.deb`) for Nsight Systems and DCGM pre-downloaded to build the docker image.
 
-- Nsight System: version `3.1.72`, downloaded under `third_party/nsys/nsys_cli_2020.3.1.72.deb`
+- Nsight Systems: version `3.1.72`, downloaded under `third_party/nsys/nsys_cli_2020.3.1.72.deb`
 - DCGM version: version `2.0.10`, downloaded under  `third_party/dcgm/datacenter-gpu-manager_2.0.10_amd64.deb`
 
 In order to download the `.deb` files, you need to register a NVIDIA developer account via: <https://developer.nvidia.com/login>, after that, you can download the .deb file:
@@ -123,16 +123,16 @@ Follow the commands below to prepare and launch the docker image, this will take
 
 #### Build or pull docker image
 
-You can either build the image from scratch or pull the pre-built image from docker-hub
+You can either build the image from scratch or pull the pre-built image from Docker Hub.
 To build the image from scracth:
 ```bash
-# build the image, select from nvidia20.06 or nvidia20.08 to ensure it works with A100
+# build the image, select nvidia20.06 to work with the A100 GPU.
 # this will take about 10 mins to complete
-bash docker/build.sh <the version of the image, e.g. nvidia20.08>
+bash docker/build.sh nvidia20.06
 ```
-To pull from docker-hub
+To pull from Docker Hub directly without building
 ```bash
-docker pull wangshangsam/hfta:mlsys21_<the version of the image, e.g. nvidia20.08>
+docker pull wangshangsam/hfta:mlsys21_nvidia20.06
 ```
 
 #### Launch a docker container
