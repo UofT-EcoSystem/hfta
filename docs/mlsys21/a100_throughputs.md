@@ -7,7 +7,7 @@
   * [Steps](#steps)
     + [Enable MIG](#enable-mig)
     + [Prepare codebase](#prepare-codebase)
-    + [Acquiring NVIDIA Nsight Systems CLI and DCGM](#acquiring-nvidia-nsight-compute-cli-and-dcgm)
+    + [Acquiring NVIDIA Nsight Systems CLI and DCGM](#acquiring-nvidia-nsight-systems-cli-and-dcgm)
     + [Download and launch docker image](#download-and-launch-docker-image)
       - [Build docker image](#build-docker-image)
       - [Launch a docker container](#launch-a-docker-container)
@@ -105,9 +105,9 @@ git clone https://github.com/UofT-EcoSystem/hfta.git
 cd hfta
 ```
 
-### Acquiring NVIDIA Nsight System CLI and DCGM
+### Acquiring NVIDIA Nsight Systems CLI and DCGM
 
-We require two installation files (`.deb`) for Nsight Compute and DCGM pre-downloaded to build the docker image.
+We require two installation files (`.deb`) for Nsight Systems and DCGM pre-downloaded to build the docker image.
 
 - Nsight System: version `3.1.72`, downloaded under `third_party/nsys/nsys_cli_2020.3.1.72.deb`
 - DCGM version: version `2.0.10`, downloaded under  `third_party/dcgm/datacenter-gpu-manager_2.0.10_amd64.deb`
