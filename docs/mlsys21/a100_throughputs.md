@@ -131,7 +131,7 @@ To build the image from scracth:
 # this will take about 10 mins to complete
 bash docker/build.sh nvidia20.06
 ```
-To pull from Docker Hub directly without building
+To pull from Docker Hub directly without building it locally:
 ```bash
 docker pull wangshangsam/hfta:mlsys21_nvidia20.06
 ```
