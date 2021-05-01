@@ -1,13 +1,15 @@
-  # Measure the training throughput on V100 GPU
+  # Measure the training throughput on V100 or RTX6000 GPUs
 
-- [Measure the training throughput on V100 GPU](#measure-the-training-throughput-on-v100-gpu)
+- [Measure the training throughput on V100 or RTX6000 GPUs](#measure-the-training-throughput-on-v100-or-rtx6000-gpus)
   - [Requirements](#requirements)
-    - [Amazon EC2](#amazon-ec2)
+    - [Amazon EC2 for V100](#amazon-ec2-for-v100)
+    - [Local Machine for RTX6000](#local-machine-for-rtx6000)
   - [Steps](#steps)
     - [Prepare codebase](#prepare-codebase)
     - [Acquiring NVIDIA Nsight Compute CLI and DCGM](#acquiring-nvidia-nsight-compute-cli-and-dcgm)
     - [Download and launch docker image](#download-and-launch-docker-image)
       - [Build docker image](#build-docker-image)
+      - [Reuse prebuilt docker image](#reuse-prebuilt-docker-image)
       - [Launch a docker container](#launch-a-docker-container)
     - [Install HFTA and its dependencies as a Python package](#install-hfta-and-its-dependencies-as-a-python-package)
     - [Run experiments](#run-experiments)
@@ -15,22 +17,26 @@
 
 ## Requirements
 
-You need to have access to GPU resource on major GPU cloud platforms such as Amazon EC2. We will give an example of Amazon EC2. 
+For V100, You need to have access to GPU resources on major GPU cloud platforms such as Amazon EC2. We will give an example of Amazon EC2. 
+
+For RTX6000, you need to have access to a local machine that has at least one RTX6000 GPU.
 
 
-### Amazon EC2
+### Amazon EC2 for V100
 
 If you have never used Amazon EC2 before, you should request an account from <https://aws.amazon.com/ec2> to get access to the GPU VMs
 
 After getting access, navigate to the "EC2 Dashboard" -> "Launch instance"  pane to create an VM with V100 GPUs.
 - The GPU instance we used for accessing V100 GPUs on Amazon EC2 is [`p3.2xlarge`](https://aws.amazon.com/ec2/instance-types/p3/).
-- The instance is configured as a complete machine with 1 NVIDIA V100 GPU. If you want use more, you can select other larger `p3` instance.
+- The p3.2xlarge instance contains 8 vCPUs and 61 GB host memory. If you selected a larger instance with more GPUs, docker can limit the amount of host resource allocated per GPU.
 - We used `NVIDIA Deep Learning AMI v20.06.3`
 - The host resource contains 8 vCPUs, 61 GB memory, but docker instances will limit this.
 - We used a standard EBS boot disk with 100GB of storage capacity.
 
 __Note: please make sure to turn off your VM instances as soon as you finish the experiments, as the instances are quite costly__
 
+### Local Machine for RTX6000
+If you have a machine with at least one RTX6000, you need to configure the NVIDIA driver and CUDA toolkits properly. And `pytorch` much be able to run on this machine.
 
 ## Steps
 
@@ -38,7 +44,7 @@ __Note: please make sure to turn off your VM instances as soon as you finish the
 
 ### Prepare codebase
 
-First clone the repo and navigate to the project
+First, clone the repo and navigate to the project
 
 ```bash
 # clone the code base
@@ -54,7 +60,7 @@ We require two installation files (`.deb`) for Nsight Compute and DCGM pre-downl
 - DCGM version: version `2.0.10`, downloaded under  `third_party/dcgm/datacenter-gpu-manager_2.0.10_amd64.deb`
 
 In order to download the `.deb` files, you need to register a NVIDIA developer account via: <https://developer.nvidia.com/login>, after that, you can download the .deb file:
-- NVIDIA Nsight Computer at: <https://developer.nvidia.com/nsight-compute>
+- NVIDIA Nsight System at: <https://developer.nvidia.com/nsight-compute>
 - NVIDIA DCGM at: <https://developer.nvidia.com/dcgm>
 
 
@@ -64,15 +70,24 @@ Follow the commands below to prepare and launch the docker image, this will take
 
 #### Build docker image
 ```bash
-# build the image, select from native1.6-cu10.2, nvidia20.06, nvidia20.08
+# build the image, select native1.6-cu10.2 for V100 and RTX6000 
 # this will take about 10 mins to complete
 bash docker/build.sh <the version of the image, e.g. native1.6-cu10.2>
 ```
 
+#### Reuse prebuilt docker image
+If you do not wish to build the docker image from scratch, you can reuse the
+prebuilt docker image that we provide:
+```
+docker pull wangshangsam/hfta:mlsys21_native1.6-cu10.2
+docker tag wangshangsam/hfta:mlsys21_native1.6-cu10.2 hfta:dev
+```
+
+
 #### Launch a docker container
 ```bash
 # launch the image
-# you will need to provide a placeholder mount point for data directory
+# you will need to provide a placeholder mount point for the data directory
 # default is under ${HOME}/datasets
 ubuntu@ip-xxxxxxxx:~/hfta$ bash docker/launch.sh <optional: data directory mount point> <optional: image tag>
 
@@ -143,16 +158,22 @@ benchmarks/workflow.sh" expects 3 arguments in total
 
 The first two arguments, are often needed in every run,. Please refer to the script for the usage of the arguments
 ```bash
-# The command below will set the target device and device model to be CUDA, A100,
+# The command below will set the target device and device model to be CUDA, V100,
 # and the output directory by default is ./benchmarks, but you can specify other things
-source benchmarks/workflow.sh cuda a100 <optional: output root dir of the benchmark output>
+source benchmarks/workflow.sh cuda v100 <optional: output root dir >
+# For CUDA, RTX6000
+source benchmarks/workflow.sh cuda rtx6000 <optional: output root dir>
 ```
 
 3. Run experiments by calling workflow helper functions. The workflow functions are defined in the `_workflow_<modelname>.sh` files under `<repo root>/benchmarks`.
 ```bash
 # The functions are generally named as `workflow_<modelname>`.
-# For example, in order to run BERT experiment, do
+# For example, in order to run BERT experiment, run
 workflow_bert
+# For partially fused Rsenet experiment, run
+workflow_resnet_partially_fused
+# For Rsenet convergence experiment, run
+workflow_convergence 
 ```
 
 ### Plot speedup curves
@@ -163,6 +184,10 @@ After the workflow experiment is done, run bash function below to process the ou
 # In general, plot functions are defined as plot_<exp name>
 # For example, for BERT experiment, run
 plot_bert
+# For partially fused Rsenet experiment, run
+plot_resnet_partially_fused
+# For Rsenet convergence experiment, run
+plot_resnet_convergence
 ```
 
 Finally, you should be able to see the `.csv` and `.png` files under the output directory (`./benchmarks (or the directory you specified above)`).
