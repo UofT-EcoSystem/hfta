@@ -134,6 +134,7 @@ bash docker/build.sh nvidia20.06
 To pull from Docker Hub directly without building it locally:
 ```bash
 docker pull wangshangsam/hfta:mlsys21_nvidia20.06
+docker tag wangshangsam/hfta:mlsys21_nvidia20.06 hfta:dev
 ```
 
 #### Launch a docker container
