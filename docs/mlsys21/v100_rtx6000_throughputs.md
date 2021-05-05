@@ -6,7 +6,7 @@
     - [Local Machine for RTX6000](#local-machine-for-rtx6000)
   - [Steps](#steps)
     - [Prepare codebase](#prepare-codebase)
-    - [Acquiring NVIDIA Nsight Compute CLI and DCGM](#acquiring-nvidia-nsight-compute-cli-and-dcgm)
+    - [Acquiring NVIDIA Nsight Systems CLI and DCGM](#acquiring-nvidia-nsight-systems-cli-and-dcgm)
     - [Download and launch docker image](#download-and-launch-docker-image)
       - [Build docker image](#build-docker-image)
       - [Reuse prebuilt docker image](#reuse-prebuilt-docker-image)
@@ -17,26 +17,32 @@
 
 ## Requirements
 
-For V100, You need to have access to GPU resources on major GPU cloud platforms such as Amazon EC2. We will give an example of Amazon EC2. 
+For V100, you need to have access to GPU resources on major GPU cloud platforms such as Amazon EC2. We will give an example of Amazon EC2. 
 
 For RTX6000, you need to have access to a local machine that has at least one RTX6000 GPU.
 
 
 ### Amazon EC2 for V100
 
-If you have never used Amazon EC2 before, you should request an account from <https://aws.amazon.com/ec2> to get access to the GPU VMs
+If you have never used Amazon EC2 before, you should request an account from <https://aws.amazon.com/ec2> to get access to the GPU VMs.
 
 After getting access, navigate to the "EC2 Dashboard" -> "Launch instance"  pane to create an VM with V100 GPUs.
 - The GPU instance we used for accessing V100 GPUs on Amazon EC2 is [`p3.2xlarge`](https://aws.amazon.com/ec2/instance-types/p3/).
 - The p3.2xlarge instance contains 8 vCPUs and 61 GB host memory. If you selected a larger instance with more GPUs, docker can limit the amount of host resource allocated per GPU.
-- We used `NVIDIA Deep Learning AMI v20.06.3`
+- We used `NVIDIA Deep Learning AMI v20.06.3`.
 - The host resource contains 8 vCPUs, 61 GB memory, but docker instances will limit this.
 - We used a standard EBS boot disk with 100GB of storage capacity.
 
 __Note: please make sure to turn off your VM instances as soon as you finish the experiments, as the instances are quite costly__
 
 ### Local Machine for RTX6000
-If you have a machine with at least one RTX6000, you need to configure the NVIDIA driver and CUDA toolkits properly. And `pytorch` much be able to run on this machine.
+If you have a machine with at least one RTX6000, you need to configure the NVIDIA driver and nvidia-docker properly. Please refer to the steps in https://github.com/NVIDIA/nvidia-docker#getting-started on how to setup a fresh machine for our experiments.
+
+The software specification of the machine with RTX6000 under our experiments is:
+> NVIDIA GPU Driver Version: 450.66
+> OS: Ubuntu 18.04.5 LTS
+> Docker Version: 20.10.2, build 2291f61
+> `nvidia-docker2` Version: 2.5.0-1
 
 ## Steps
 
@@ -44,7 +50,7 @@ If you have a machine with at least one RTX6000, you need to configure the NVIDI
 
 ### Prepare codebase
 
-First, clone the repo and navigate to the project
+First, clone the repo and navigate to the project.
 
 ```bash
 # clone the code base
@@ -52,27 +58,27 @@ git clone https://github.com/UofT-EcoSystem/hfta.git
 cd hfta
 ```
 
-### Acquiring NVIDIA Nsight Compute CLI and DCGM
+### Acquiring NVIDIA Nsight Systems CLI and DCGM
 
-We require two installation files (`.deb`) for Nsight Compute and DCGM pre-downloaded to build the docker image.
+We require two installation files (`.deb`) for Nsight Systems and DCGM pre-downloaded to build the docker image.
 
-- Nsight Compute: version `3.1.72`, downloaded under `third_party/nsys/nsys_cli_2020.3.1.72.deb`
+- Nsight Systems: version `3.1.72`, downloaded under `third_party/nsys/nsys_cli_2020.3.1.72.deb`
 - DCGM version: version `2.0.10`, downloaded under  `third_party/dcgm/datacenter-gpu-manager_2.0.10_amd64.deb`
 
 In order to download the `.deb` files, you need to register a NVIDIA developer account via: <https://developer.nvidia.com/login>, after that, you can download the .deb file:
-- NVIDIA Nsight System at: <https://developer.nvidia.com/nsight-compute>
+- NVIDIA Nsight Systems CLI at: <https://developer.nvidia.com/gameworksdownload#?dn=nsight-systems-2020-3> (Select the "Linux CLI Only" option)
 - NVIDIA DCGM at: <https://developer.nvidia.com/dcgm>
 
 
 ### Download and launch docker image
 
-Follow the commands below to prepare and launch the docker image, this will take approximately 10 mins
+Follow the commands below to prepare and launch the docker image, this will take approximately 10 mins.
 
 #### Build docker image
 ```bash
 # build the image, select native1.6-cu10.2 for V100 and RTX6000 
 # this will take about 10 mins to complete
-bash docker/build.sh <the version of the image, e.g. native1.6-cu10.2>
+bash docker/build.sh native1.6-cu10.2
 ```
 
 #### Reuse prebuilt docker image
@@ -90,36 +96,6 @@ docker tag wangshangsam/hfta:mlsys21_native1.6-cu10.2 hfta:dev
 # you will need to provide a placeholder mount point for the data directory
 # default is under ${HOME}/datasets
 ubuntu@ip-xxxxxxxx:~/hfta$ bash docker/launch.sh <optional: data directory mount point> <optional: image tag>
-
-=============
-== PyTorch ==
-=============
-
-NVIDIA Release 20.08 (build 15516749)
-PyTorch Version 1.7.0a0+8deb4fe
-
-Container image Copyright (c) 2020, NVIDIA CORPORATION.  All rights reserved.
-
-Copyright (c) 2014-2020 Facebook Inc.
-Copyright (c) 2011-2014 Idiap Research Institute (Ronan Collobert)
-Copyright (c) 2012-2014 Deepmind Technologies    (Koray Kavukcuoglu)
-Copyright (c) 2011-2012 NEC Laboratories America (Koray Kavukcuoglu)
-Copyright (c) 2011-2013 NYU                      (Clement Farabet)
-Copyright (c) 2006-2010 NEC Laboratories America (Ronan Collobert, Leon Bottou, Iain Melvin, Jason Weston)
-Copyright (c) 2006      Idiap Research Institute (Samy Bengio)
-Copyright (c) 2001-2004 Idiap Research Institute (Ronan Collobert, Samy Bengio, Johnny Mariethoz)
-Copyright (c) 2015      Google Inc.
-Copyright (c) 2015      Yangqing Jia
-Copyright (c) 2013-2016 The Caffe contributors
-All rights reserved.
-
-Various files include modifications (c) NVIDIA CORPORATION.  All rights reserved.
-NVIDIA modifications are covered by the license terms that apply to the underlying project or file.
-
-NOTE: MOFED driver for multi-node communication was not detected.
-      Multi-node communication performance may be reduced.
-
-root@c7ee88f34a48:/home/ubuntu/hfta#
 
 ```
 
