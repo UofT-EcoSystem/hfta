@@ -56,6 +56,7 @@ First, clone the repo and navigate to the project.
 # clone the code base
 git clone https://github.com/UofT-EcoSystem/hfta.git
 cd hfta
+git checkout releases/mlsys21
 ```
 
 ### Acquiring NVIDIA Nsight Systems CLI and DCGM

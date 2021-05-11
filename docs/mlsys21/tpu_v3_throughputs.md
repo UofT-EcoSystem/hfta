@@ -25,7 +25,7 @@ You need to have access to TPU resource on Google Cloud Platform (GCP).
 
 1. Start the VM and TPU instance you just created and ensure the VM knows the TPU IP address (See instructions [here](https://github.com/pytorch/xla#VMImage)).
 2. Clone this repo: `git clone https://github.com/UofT-EcoSystem/hfta.git`
-3. `cd hfta`
+3. `cd hfta; git checkout releases/mlsys21`
 4. Download and enter the docker image: `bash docker/launch_xla.sh`. The docker image will generally be more than 20 GB.
 5. Install basic requirements for HFTA: `pip install -e .[xla]`
 6. Install additional requirements for benchmarking: `pip install plyfile`
