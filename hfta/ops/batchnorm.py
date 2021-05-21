@@ -109,8 +109,10 @@ class _NormBase(Module):
       if self.num_batches_tracked == 0:
         self.num_batches_tracked = other.num_batches_tracked
       elif self.num_batches_tracked != other.num_batches_tracked:
-        raise ValueError("Got different \"num_batches_tracked\", {} != {} for b={}"
-          .format(self.num_batches_tracked, other.num_batches_tracked, b))
+        raise ValueError(
+            "Got different \"num_batches_tracked\", {} != {} for b={}".format(
+                self.num_batches_tracked, other.num_batches_tracked, b))
+
 
 class _BatchNorm(_NormBase):
 
