@@ -27,7 +27,6 @@ def testcase_1d(
     }
     batchNormal1d_array = [nn.BatchNorm1d(*args, **kwargs) for _ in range(B)]
     batchNormal1d_fused = get_hfta_op_for(nn.BatchNorm1d, B=B)(*args, **kwargs)
-
     # Init weights and biases.
     for b in range(B):
       batchNormal1d_fused.snatch_parameters(batchNormal1d_array[b], b)
