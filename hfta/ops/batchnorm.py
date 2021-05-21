@@ -97,6 +97,20 @@ class _NormBase(Module):
         error_msgs,
     )
 
+  def snatch_parameters(self, other, b):
+    assert 0 <= b < self.B
+    if self.affine:
+      self.weight.data[b] = other.weight.data
+      self.bias.data[b] = other.bias.data
+
+    if self.track_running_stats:
+      self.running_mean[b] = other.running_mean
+      self.running_var[b] = other.running_var
+      if self.num_batches_tracked == 0:
+        self.num_batches_tracked = other.num_batches_tracked
+      elif self.num_batches_tracked != other.num_batches_tracked:
+        raise ValueError("Got different \"num_batches_tracked\", {} != {} for b={}"
+          .format(self.num_batches_tracked, other.num_batches_tracked, b))
 
 class _BatchNorm(_NormBase):
 
@@ -183,12 +197,6 @@ class _BatchNorm(_NormBase):
       res = res.transpose(0, 1)
 
     return res
-
-  def snatch_parameters(self, other, b):
-    assert 0 <= b < self.B
-    if self.affine:
-      self.weight.data[b] = other.weight.data
-      self.bias.data[b] = other.bias.data
 
 
 class BatchNorm1d(_BatchNorm):
