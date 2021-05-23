@@ -55,43 +55,59 @@ def testcase_1d(
       except AssertionError as e:
         print(e)
 
-    # emulate "training" for the BN layer
-    [bn.train() for bn in batchNormal1d_array]
-    for i in range(train_test_steps):
-      if L == 0:
-        x_array = [torch.rand(N, C) for _ in range(B)]
-      else:
-        x_array = [torch.rand(N, C, L) for _ in range(B)]
+  # emulate "training" for the BN layer
+  [bn.train() for bn in batchNormal1d_array]
+  loss = nn.L1Loss()
+  params = []
+  for bn in batchNormal1d_array:
+    params += list(bn.parameters())
+  if len(params) != 0:
+    optim = torch.optim.SGD(params, lr=0.001)
 
-      _ = [batchNormal1d_array[b](x_array[b]) for b in range(B)]
+  for i in range(train_test_steps):
+    if L == 0:
+      x_array = [torch.rand(N, C, requires_grad = True) for _ in range(B)]
+    else:
+      x_array = [torch.rand(N, C, L, requires_grad = True) for _ in range(B)]
 
-    batchNormal1d_fused.reset_parameters()
-    # snatch the "trained" BN layer
-    for b in range(B):
-      batchNormal1d_fused.snatch_parameters(batchNormal1d_array[b], b)
+    ft_maps = [batchNormal1d_array[b](x_array[b]) for b in range(B)]
 
-    # run one pass of evaluation
-    [bn.eval() for bn in batchNormal1d_array]
-    batchNormal1d_fused.eval()
-    with torch.no_grad():
-      if L == 0:
-        x_array = [torch.rand(N, C) for _ in range(B)]
-        x_fused = torch.cat([x.unsqueeze(0) for x in x_array], dim=0)
-      else:
-        x_array = [torch.rand(N, C, L) for _ in range(B)]
-        x_fused = torch.cat([x.unsqueeze(1) for x in x_array], dim=1)
+    if len(params) != 0:
+      ele_losses = [loss(ft_map.exp(), x) for ft_map, x in zip(ft_maps, x_array)]
+      [e.backward() for e in ele_losses]
+      optim.step()
 
-      y_array = [batchNormal1d_array[b](x_array[b]) for b in range(B)]
-      y_fused_actual = batchNormal1d_fused(x_fused)
+
+  batchNormal1d_fused.reset_parameters()
+  # snatch the "trained" BN layer
+  for b in range(B):
+    batchNormal1d_fused.snatch_parameters(batchNormal1d_array[b], b)
+
+  # run one pass of evaluation
+  [bn.eval() for bn in batchNormal1d_array]
+  batchNormal1d_fused.eval()
+  with torch.no_grad():
+    if L == 0:
+      x_array = [torch.rand(N, C) for _ in range(B)]
+      x_fused = torch.cat([x.unsqueeze(0) for x in x_array], dim=0)
+    else:
+      x_array = [torch.rand(N, C, L) for _ in range(B)]
+      x_fused = torch.cat([x.unsqueeze(1) for x in x_array], dim=1)
+
+    y_array = [batchNormal1d_array[b](x_array[b]) for b in range(B)]
+    y_fused_actual = batchNormal1d_fused(x_fused)
+    if L == 0:
+      y_fused_expect = torch.cat([y.unsqueeze(0) for y in y_array], dim=0)
+    else:
       y_fused_expect = torch.cat([y.unsqueeze(1) for y in y_array], dim=1)
-      try:
-        np.testing.assert_allclose(
-            y_fused_actual.numpy(),
-            y_fused_expect.numpy(),
-            rtol=1e-4,
-        )
-      except AssertionError as e:
-        print(e)
+    try:
+      np.testing.assert_allclose(
+          y_fused_actual.numpy(),
+          y_fused_expect.numpy(),
+          rtol=1e-4,
+      )
+    except AssertionError as e:
+      print(e)
 
 
 def testcase_2d(
@@ -138,35 +154,47 @@ def testcase_2d(
       except AssertionError as e:
         print(e)
 
-    # emulate "training" for the BN layer
-    [bn.train() for bn in batchNormal2d_array]
-    for i in range(train_test_steps):
-      x_array = [torch.rand(N, C, HWin, HWin) for _ in range(B)]
-      _ = [batchNormal2d_array[b](x_array[b]) for b in range(B)]
+  # emulate "training" for the BN layer
+  [bn.train() for bn in batchNormal2d_array]
+  loss = nn.L1Loss()
+  params = []
+  for bn in batchNormal2d_array:
+    params += list(bn.parameters())
+  if len(params) != 0:
+    optim = torch.optim.SGD(params, lr=0.001)
 
-    batchNormal2d_fused.reset_parameters()
-    # snatch the "trained" BN layer
-    for b in range(B):
-      batchNormal2d_fused.snatch_parameters(batchNormal2d_array[b], b)
+  for i in range(train_test_steps):
+    x_array = [torch.rand(N, C, HWin, HWin, requires_grad = True) for _ in range(B)]
+    ft_maps = [batchNormal2d_array[b](x_array[b]) for b in range(B)]
 
-    # run one pass of evaluation
-    [bn.eval() for bn in batchNormal2d_array]
-    batchNormal2d_fused.eval()
-    with torch.no_grad():
-      x_array = [torch.rand(N, C, HWin, HWin) for _ in range(B)]
-      x_fused = torch.cat([x.unsqueeze(1) for x in x_array], dim=1)
+    if len(params) != 0:
+      ele_losses = [loss(ft_map, x) for ft_map, x in zip(ft_maps, x_array)]
+      [e.backward() for e in ele_losses]
+      optim.step()
 
-      y_array = [batchNormal2d_array[b](x_array[b]) for b in range(B)]
-      y_fused_actual = batchNormal2d_fused(x_fused)
-      y_fused_expect = torch.cat([y.unsqueeze(1) for y in y_array], dim=1)
-      try:
-        np.testing.assert_allclose(
-            y_fused_actual.numpy(),
-            y_fused_expect.numpy(),
-            rtol=1e-4,
-        )
-      except AssertionError as e:
-        print(e)
+  batchNormal2d_fused.reset_parameters()
+  # snatch the "trained" BN layer
+  for b in range(B):
+    batchNormal2d_fused.snatch_parameters(batchNormal2d_array[b], b)
+
+  # run one pass of evaluation
+  [bn.eval() for bn in batchNormal2d_array]
+  batchNormal2d_fused.eval()
+  with torch.no_grad():
+    x_array = [torch.rand(N, C, HWin, HWin) for _ in range(B)]
+    x_fused = torch.cat([x.unsqueeze(1) for x in x_array], dim=1)
+
+    y_array = [batchNormal2d_array[b](x_array[b]) for b in range(B)]
+    y_fused_actual = batchNormal2d_fused(x_fused)
+    y_fused_expect = torch.cat([y.unsqueeze(1) for y in y_array], dim=1)
+    try:
+      np.testing.assert_allclose(
+          y_fused_actual.numpy(),
+          y_fused_expect.numpy(),
+          rtol=1e-4,
+      )
+    except AssertionError as e:
+      print(e)
 
 
 if __name__ == '__main__':
