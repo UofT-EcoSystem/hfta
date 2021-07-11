@@ -1,4 +1,4 @@
-from torch._six import container_abcs
+import collections
 from itertools import repeat
 
 
@@ -23,8 +23,8 @@ def _reverse_repeat_tuple(t, n):
 def _ntuple(n):
 
   def parse(x):
-    if isinstance(x, container_abcs.Iterable):
-      return x
+    if isinstance(x, collections.abc.Iterable):
+      return tuple(x)
     return tuple(repeat(x, n))
 
   return parse
