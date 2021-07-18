@@ -15,17 +15,37 @@ class Embedding(Module):
   N: Batch size.
   *: Words.
   """
+  __constants__ = [
+      'num_embeddings', 'embedding_dim', 'padding_idx', 'max_norm', 'norm_type',
+      'scale_grad_by_freq', 'sparse', 'addition', 'B'
+  ]
 
-  def __init__(self,
-               num_embeddings,
-               embedding_dim,
-               padding_idx=None,
-               max_norm=None,
-               norm_type=2.,
-               scale_grad_by_freq=False,
-               sparse=False,
-               _weight=None,
-               B=1) -> None:
+  num_embeddings: int
+  embedding_dim: int
+  padding_idx: Optional[int]
+  max_norm: Optional[float]
+  norm_type: float
+  scale_grad_by_freq: bool
+  weight: Tensor
+  sparse: bool
+  addition: Tensor
+  B: int
+
+  def __init__(
+      self,
+      num_embeddings: int,
+      embedding_dim: int,
+      padding_idx: Optional[int] = None,
+      max_norm: Optional[float] = None,
+      norm_type: float = 2.,
+      scale_grad_by_freq: bool = False,
+      sparse: bool = False,
+      _weight: Optional[Tensor] = None,
+      device=None,
+      dtype=None,
+      B=1,
+  ) -> None:
+    factory_kwargs = {'device': device, 'dtype': dtype}
     super(Embedding, self).__init__()
     self.num_embeddings = num_embeddings
     self.embedding_dim = embedding_dim
@@ -42,16 +62,21 @@ class Embedding(Module):
     self.scale_grad_by_freq = scale_grad_by_freq
     self.addition = torch.arange(B) * self.num_embeddings
     if _weight is None:
-      self.weight = Parameter(torch.Tensor(B, num_embeddings, embedding_dim))
+      self.weight = Parameter(
+          torch.empty((B, num_embeddings, embedding_dim), **factory_kwargs))
       self.reset_parameters()
     else:
       assert list(_weight.shape) == [B, num_embeddings, embedding_dim], \
           'Shape of weight does not match num_embeddings and embedding_dim'
       self.weight = Parameter(_weight)
+
     self.sparse = sparse
 
   def reset_parameters(self) -> None:
     init.normal_(self.weight)
+    self._fill_padding_idx_with_zero()
+
+  def _fill_padding_idx_with_zero(self) -> None:
     if self.padding_idx is not None:
       with torch.no_grad():
         self.weight[self.padding_idx].fill_(0)
