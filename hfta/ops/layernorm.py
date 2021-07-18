@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor, Size
-from torch.nn import Module, Parameter
+from torch.nn import Module, Parameter, init
 from typing import Union, List, Tuple
 
 _shape_t = Union[int, List[int], Size]
@@ -52,8 +52,8 @@ class LayerNorm(Module):
 
   def reset_parameters(self) -> None:
     if self.elementwise_affine:
-      nn.init.ones_(self.weight)
-      nn.init.zeros_(self.bias)
+      init.ones_(self.weight)
+      init.zeros_(self.bias)
 
   def forward(self, input: Tensor) -> Tensor:
     res = F.layer_norm(input, self.normalized_shape, None, None, self.eps)
