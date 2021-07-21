@@ -13,8 +13,10 @@ class Adam(Optimizer):
   r"""Implements Adam algorithm.
 
   It has been proposed in `Adam: A Method for Stochastic Optimization`_.
+  The implementation of the L2 penalty follows changes proposed in
+    `Decoupled Weight Decay Regularization`_.
 
-  Arguments:
+  Args:
     params (iterable): iterable of parameters to optimize or dicts defining
       parameter groups
     lr (float or a list/tuple/np.array/torch.Tensor of floats, optional):
@@ -32,6 +34,8 @@ class Adam(Optimizer):
 
   .. _Adam\: A Method for Stochastic Optimization:
       https://arxiv.org/abs/1412.6980
+  .. _Decoupled Weight Decay Regularization:
+        https://arxiv.org/abs/1711.05101
   .. _On the Convergence of Adam and Beyond:
       https://openreview.net/forum?id=ryQu7f-RZ
   """
@@ -81,7 +85,7 @@ class Adam(Optimizer):
   def step(self, closure=None):
     """Performs a single optimization step.
 
-    Arguments:
+    Args:
       closure (callable, optional): A closure that reevaluates the model
         and returns the loss.
     """
@@ -91,6 +95,8 @@ class Adam(Optimizer):
         loss = closure()
 
     for group in self.param_groups:
+      beta1, beta2 = group['betas']
+
       for p in group['params']:
         if p.grad is None:
           continue
@@ -123,18 +129,22 @@ class Adam(Optimizer):
         exp_avg, exp_avg_sq = state['exp_avg'], state['exp_avg_sq']
         if amsgrad:
           max_exp_avg_sq = state['max_exp_avg_sq']
-        beta1, beta2 = group['betas']
         lr, eps, weight_decay = group['lr'], group['eps'], group['weight_decay']
 
         state['step'] += 1
-        if isinstance(beta1, dict):
-          bias_correction1 = 1 - beta1[p]**state['step']
-        else:
-          bias_correction1 = 1 - beta1**state['step']
-        if isinstance(beta2, dict):
-          sqrt_bias_correction2 = (1 - beta2[p]**state['step']).sqrt()
-        else:
-          sqrt_bias_correction2 = math.sqrt(1 - beta2**state['step'])
+
+        # Start of functional computation
+        def get_bias_correction(beta, step):
+          if isinstance(beta, dict):
+            bias_correction = 1 - beta[p]**step
+          else:
+            bias_correction = 1 - beta**step
+          return bias_correction
+
+        bias_correction1 = get_bias_correction(beta1, state['step'])
+        bias_correction2 = get_bias_correction(beta2, state['step'])
+        sqrt_bias_correction2 = bias_correction2.sqrt() if isinstance(
+            bias_correction2, torch.Tensor) else math.sqrt(bias_correction2)
 
         if isinstance(weight_decay, dict) or weight_decay != 0:
           if isinstance(weight_decay, dict):
@@ -147,10 +157,12 @@ class Adam(Optimizer):
           exp_avg.mul_(beta1[p]).add_((1 - beta1[p]) * grad)
         else:
           exp_avg.mul_(beta1).add_(grad, alpha=1 - beta1)
+
         if isinstance(beta2, dict):
           exp_avg_sq.mul_(beta2[p]).add_((1 - beta2[p]) * grad * grad)
         else:
           exp_avg_sq.mul_(beta2).addcmul_(grad, grad, value=1 - beta2)
+
         if amsgrad:
           # Maintains the maximum of all 2nd moment running avg. till now
           torch.max(max_exp_avg_sq, exp_avg_sq, out=max_exp_avg_sq)
@@ -169,6 +181,7 @@ class Adam(Optimizer):
           step_size = lr[p] / bias_correction1
         else:
           step_size = lr / bias_correction1
+
         if isinstance(step_size, torch.Tensor):
           p.add_(-step_size * (exp_avg / denom))
         else:
