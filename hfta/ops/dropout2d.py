@@ -1,5 +1,7 @@
 import torch.nn as nn
 
+from torch import Tensor
+
 
 class Dropout2d(nn.Module):
   """ Input format: [N B C H W]
@@ -9,13 +11,26 @@ class Dropout2d(nn.Module):
   H: Height.
   W: Width.
   """
+  __constants__ = ['p', 'inplace', 'B']
+  p: float
+  inplace: bool
+  B: int
 
-  def __init__(self, p, inplace=False, B=1):
+  def __init__(
+      self,
+      p: float = 0.5,
+      inplace: bool = False,
+      B: int = 1,
+  ) -> None:
     super(Dropout2d, self).__init__()
+    self.B = B  # Not used
     self.dropout = nn.Dropout2d(p, inplace)
 
-  def forward(self, x):
-    shape = list(x.size())
+  def extra_repr(self) -> str:
+    return '{}, B={}'.format(self.dropout.extra_repr(), self.B)
+
+  def forward(self, input: Tensor) -> Tensor:
+    shape = list(input.size())
     new_shape = [shape[0] * shape[1]] + shape[2:]
-    y = self.dropout(x.view(new_shape))
+    y = self.dropout(input.view(new_shape))
     return y.view(shape)
