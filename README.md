@@ -123,10 +123,11 @@ If you use HFTA in your work, please cite our MLSys'21 publication using the
 following BibTeX:
 
 ```BibTeX
-% TODO: Update the BibTex after pre-proceeding -> proceeding.
 @inproceedings{MLSYS2021_HFTA,
- author = {Shang Wang and Peiming Yang and Yuxuan Zheng and Xin Li and Gennady Pekhimenko},
+ author = {Wang, Shang and Yang, Peiming and Zheng, Yuxuan and Li, Xin and Pekhimenko, Gennady},
  booktitle = {Proceedings of Machine Learning and Systems},
+ editor = {A. Smola and A. Dimakis and I. Stoica},
+ pages = {599--623},
  title = {Horizontally Fused Training Array: An Effective Hardware Utilization Squeezer for Training Novel Deep Learning Models},
  url = {https://proceedings.mlsys.org/paper/2021/file/a97da629b098b75c294dffdc3e463904-Paper.pdf},
  volume = {3},
