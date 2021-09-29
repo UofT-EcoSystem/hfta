@@ -16,6 +16,8 @@ def testcase_1d(
     L=16,
     train_test_steps=10,
     training=True,
+    device=torch.device('cpu'),
+    dtype=torch.float,
 ):
   C = num_features
   with torch.no_grad():
@@ -25,6 +27,8 @@ def testcase_1d(
         'momentum': momentum,
         'affine': affine,
         'track_running_stats': track_running_stats,
+        'device': device,
+        'dtype': dtype,
     }
     batchNormal1d_array = [nn.BatchNorm1d(*args, **kwargs) for _ in range(B)]
     if track_running_stats:
@@ -47,23 +51,30 @@ def testcase_1d(
 
     # check whether fused outputs are same in several training steps
     for i in range(train_test_steps):
+      x_kwargs = {'device': device, 'dtype': dtype}
       if L == 0:
-        x_array = [torch.rand(N, C) for _ in range(B)]
-        x_fused = torch.cat([x.unsqueeze(0) for x in x_array], dim=0)
+        x_args = (N, C)
+        cat_dim = 0
       else:
-        x_array = [torch.rand(N, C, L) for _ in range(B)]
-        x_fused = torch.cat([x.unsqueeze(1) for x in x_array], dim=1)
+        x_args = (N, C, L)
+        cat_dim = 1
+
+      x_array = [torch.rand(*x_args, **x_kwargs) for _ in range(B)]
+      x_fused = torch.cat(
+          [x.unsqueeze(cat_dim) for x in x_array],
+          dim=cat_dim,
+      )
 
       y_array = [batchNormal1d_array[b](x_array[b]) for b in range(B)]
       y_fused_actual = batchNormal1d_fused(x_fused)
-      if L == 0:
-        y_fused_expect = torch.cat([y.unsqueeze(0) for y in y_array], dim=0)
-      else:
-        y_fused_expect = torch.cat([y.unsqueeze(1) for y in y_array], dim=1)
+      y_fused_expect = torch.cat(
+          [y.unsqueeze(cat_dim) for y in y_array],
+          dim=cat_dim,
+      )
       try:
         np.testing.assert_allclose(
-            y_fused_actual.numpy(),
-            y_fused_expect.numpy(),
+            y_fused_actual.cpu().numpy(),
+            y_fused_expect.cpu().numpy(),
             rtol=1e-4,
         )
       except AssertionError as e:
@@ -81,6 +92,8 @@ def testcase_2d(
     HWin=28,
     train_test_steps=10,
     training=True,
+    device=torch.device('cpu'),
+    dtype=torch.float,
 ):
   C = num_features
   with torch.no_grad():
@@ -91,6 +104,8 @@ def testcase_2d(
         'momentum': momentum,
         'affine': affine,
         'track_running_stats': track_running_stats,
+        'device': device,
+        'dtype': dtype,
     }
     batchNormal2d_array = [nn.BatchNorm2d(*args, **kwargs) for _ in range(B)]
     batchNormal2d_fused = get_hfta_op_for(nn.BatchNorm2d, B=B)(*args, **kwargs)
@@ -113,7 +128,10 @@ def testcase_2d(
 
     # check whether fused outputs are same in several training steps
     for i in range(train_test_steps):
-      x_array = [torch.rand(N, C, HWin, HWin) for _ in range(B)]
+      x_array = [
+          torch.rand(N, C, HWin, HWin, device=device, dtype=dtype)
+          for _ in range(B)
+      ]
       x_fused = torch.cat([x.unsqueeze(1) for x in x_array], dim=1)
 
       y_array = [batchNormal2d_array[b](x_array[b]) for b in range(B)]
@@ -121,8 +139,8 @@ def testcase_2d(
       y_fused_expect = torch.cat([y.unsqueeze(1) for y in y_array], dim=1)
       try:
         np.testing.assert_allclose(
-            y_fused_actual.numpy(),
-            y_fused_expect.numpy(),
+            y_fused_actual.cpu().numpy(),
+            y_fused_expect.cpu().numpy(),
             rtol=1e-4,
         )
       except AssertionError as e:
@@ -141,6 +159,11 @@ if __name__ == '__main__':
           'affine': [True, False],
           'track_running_stats': [True, False],
           'training': [True, False],
+          'device': [
+              torch.device('cpu'),
+              torch.device('cuda:0'),
+          ],
+          'dtype': [torch.float, torch.double],
       },
   )
   testcase_automator(
@@ -154,5 +177,10 @@ if __name__ == '__main__':
           'affine': [True, False],
           'track_running_stats': [True, False],
           'training': [True, False],
+          'device': [
+              torch.device('cpu'),
+              torch.device('cuda:0'),
+          ],
+          'dtype': [torch.float, torch.double],
       },
   )
