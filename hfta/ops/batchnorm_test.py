@@ -2,7 +2,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 import random
-from hfta.ops import get_hfta_op_for, testcase_automator
+from hfta.ops import (get_hfta_op_for, testcase_automator, support_dtype,
+                      assert_allclose, dump_error_msg)
 
 
 def testcase_1d(
@@ -19,6 +20,8 @@ def testcase_1d(
     device=torch.device('cpu'),
     dtype=torch.float,
 ):
+  if not support_dtype(device, dtype):
+    return
   C = num_features
   with torch.no_grad():
     args = (num_features,)
@@ -72,13 +75,13 @@ def testcase_1d(
           dim=cat_dim,
       )
       try:
-        np.testing.assert_allclose(
+        assert_allclose(
             y_fused_actual.cpu().numpy(),
             y_fused_expect.cpu().numpy(),
             rtol=1e-4,
         )
       except AssertionError as e:
-        print(e)
+        dump_error_msg(e)
 
 
 def testcase_2d(
@@ -95,6 +98,8 @@ def testcase_2d(
     device=torch.device('cpu'),
     dtype=torch.float,
 ):
+  if not support_dtype(device, dtype):
+    return
   C = num_features
   with torch.no_grad():
 
@@ -138,13 +143,13 @@ def testcase_2d(
       y_fused_actual = batchNormal2d_fused(x_fused)
       y_fused_expect = torch.cat([y.unsqueeze(1) for y in y_array], dim=1)
       try:
-        np.testing.assert_allclose(
+        assert_allclose(
             y_fused_actual.cpu().numpy(),
             y_fused_expect.cpu().numpy(),
             rtol=1e-4,
         )
       except AssertionError as e:
-        print(e)
+        dump_error_msg(e)
 
 
 if __name__ == '__main__':
@@ -163,7 +168,7 @@ if __name__ == '__main__':
               torch.device('cpu'),
               torch.device('cuda:0'),
           ],
-          'dtype': [torch.float, torch.double],
+          'dtype': [torch.half, torch.float, torch.double],
       },
   )
   testcase_automator(
@@ -181,6 +186,6 @@ if __name__ == '__main__':
               torch.device('cpu'),
               torch.device('cuda:0'),
           ],
-          'dtype': [torch.float, torch.double],
+          'dtype': [torch.half, torch.float, torch.double],
       },
   )

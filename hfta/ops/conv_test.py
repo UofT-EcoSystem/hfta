@@ -2,15 +2,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from hfta.ops import get_hfta_op_for, testcase_automator
-
-
-def dump_error_msg(e):
-  """ Dump out the exception e message """
-  print('\t\t-> Failed with error message:')
-  print('[Start] ==============================================')
-  print(e)
-  print('[ End ] ==============================================\n')
+from hfta.ops import (get_hfta_op_for, testcase_automator, support_dtype,
+                      assert_allclose, dump_error_msg)
 
 
 def testcase_Conv1d(
@@ -26,9 +19,15 @@ def testcase_Conv1d(
     groups=1,
     bias=True,
     padding_mode='zeros',
+    device=torch.device('cpu'),
+    dtype=torch.float,
 ):
+  if not support_dtype(device, dtype):
+    return
   with torch.no_grad():
-    x_array = [torch.rand(N, Cin, Lin) for _ in range(B)]
+    x_array = [
+        torch.rand(N, Cin, Lin, device=device, dtype=dtype) for _ in range(B)
+    ]
     x_fused = torch.cat([x.unsqueeze(1) for x in x_array], dim=1)
     args = (Cin, Cout, kernel_size)
     kwargs = {
@@ -38,6 +37,8 @@ def testcase_Conv1d(
         'groups': groups,
         'bias': bias,
         'padding_mode': padding_mode,
+        'device': device,
+        'dtype': dtype,
     }
     conv_array = [nn.Conv1d(*args, **kwargs) for _ in range(B)]
     conv_fused = get_hfta_op_for(nn.Conv1d, B=B)(*args, **kwargs)
@@ -48,10 +49,11 @@ def testcase_Conv1d(
     y_fused_actual = conv_fused(x_fused)
     y_fused_expect = torch.cat([y.unsqueeze(1) for y in y_array], dim=1)
     try:
-      np.testing.assert_allclose(
-          y_fused_actual.numpy(),
-          y_fused_expect.numpy(),
+      assert_allclose(
+          y_fused_actual.cpu().numpy(),
+          y_fused_expect.cpu().numpy(),
           rtol=1e-4,
+          population_threshold=1e-2,
       )
     except AssertionError as e:
       dump_error_msg(e)
@@ -70,9 +72,16 @@ def testcase_Conv2d(
     groups=1,
     bias=True,
     padding_mode='zeros',
+    device=torch.device('cpu'),
+    dtype=torch.float,
 ):
+  if not support_dtype(device, dtype):
+    return
   with torch.no_grad():
-    x_array = [torch.rand(N, Cin, HWin, HWin) for _ in range(B)]
+    x_array = [
+        torch.rand(N, Cin, HWin, HWin, device=device, dtype=dtype)
+        for _ in range(B)
+    ]
     x_fused = torch.cat([x.unsqueeze(1) for x in x_array], dim=1)
     args = (Cin, Cout, kernel_size)
     kwargs = {
@@ -82,6 +91,8 @@ def testcase_Conv2d(
         'groups': groups,
         'bias': bias,
         'padding_mode': padding_mode,
+        'device': device,
+        'dtype': dtype,
     }
     conv_array = [nn.Conv2d(*args, **kwargs) for _ in range(B)]
     conv_fused = get_hfta_op_for(nn.Conv2d, B=B)(*args, **kwargs)
@@ -92,10 +103,11 @@ def testcase_Conv2d(
     y_fused_actual = conv_fused(x_fused)
     y_fused_expect = torch.cat([y.unsqueeze(1) for y in y_array], dim=1)
     try:
-      np.testing.assert_allclose(
-          y_fused_actual.numpy(),
-          y_fused_expect.numpy(),
+      assert_allclose(
+          y_fused_actual.cpu().numpy(),
+          y_fused_expect.cpu().numpy(),
           rtol=1e-4,
+          population_threshold=1e-2,
       )
     except AssertionError as e:
       dump_error_msg(e)
@@ -116,9 +128,16 @@ def testcase_ConvTranspose2d(
     dilation=1,
     padding_mode='zeros',
     output_size=None,
+    device=torch.device('cpu'),
+    dtype=torch.float,
 ):
+  if not support_dtype(device, dtype):
+    return
   with torch.no_grad():
-    x_array = [torch.rand(N, Cin, HWin, HWin) for _ in range(B)]
+    x_array = [
+        torch.rand(N, Cin, HWin, HWin, device=device, dtype=dtype)
+        for _ in range(B)
+    ]
     x_fused = torch.cat([x.unsqueeze(1) for x in x_array], dim=1)
     args = (Cin, Cout, kernel_size)
 
@@ -144,6 +163,8 @@ def testcase_ConvTranspose2d(
         'bias': bias,
         'dilation': dilation,
         'padding_mode': padding_mode,
+        'device': device,
+        'dtype': dtype,
     }
     conv_array = [nn.ConvTranspose2d(*args, **kwargs) for _ in range(B)]
     conv_fused = get_hfta_op_for(nn.ConvTranspose2d, B=B)(*args, **kwargs)
@@ -157,10 +178,11 @@ def testcase_ConvTranspose2d(
     y_fused_actual = conv_fused(x_fused, output_size=output_size)
     y_fused_expect = torch.cat([y.unsqueeze(1) for y in y_array], dim=1)
     try:
-      np.testing.assert_allclose(
-          y_fused_actual.numpy(),
-          y_fused_expect.numpy(),
+      assert_allclose(
+          y_fused_actual.cpu().numpy(),
+          y_fused_expect.cpu().numpy(),
           rtol=1e-4,
+          population_threshold=1e-2,
       )
       if output_size:
         assert (
@@ -188,6 +210,11 @@ if __name__ == '__main__':
           'groups': [2],
           'bias': [False],
           'padding_mode': ['reflect', 'replicate', 'circular'],
+          'device': [
+              torch.device('cpu'),
+              torch.device('cuda:0'),
+          ],
+          'dtype': [torch.half, torch.float, torch.double],
       },
   )
 
@@ -207,6 +234,11 @@ if __name__ == '__main__':
           'groups': [2],
           'bias': [False],
           'padding_mode': ['reflect', 'replicate', 'circular'],
+          'device': [
+              torch.device('cpu'),
+              torch.device('cuda:0'),
+          ],
+          'dtype': [torch.half, torch.float, torch.double],
       },
   )
 
@@ -227,5 +259,10 @@ if __name__ == '__main__':
           'bias': [False],
           'dilation': [2],
           'output_size': [(32, 3, 16, 57, 58), (57, 58)],
+          'device': [
+              torch.device('cpu'),
+              torch.device('cuda:0'),
+          ],
+          'dtype': [torch.half, torch.float, torch.double],
       },
   )
