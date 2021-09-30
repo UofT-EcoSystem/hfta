@@ -8,7 +8,7 @@ from .dropout2d import Dropout2d
 from .batchnorm import BatchNorm1d, BatchNorm2d
 from .utils import testcase_automator, assert_allclose, dump_error_msg
 from .sparse import Embedding
-from .layernorm import LayerNorm
+from .normalization import LayerNorm
 from .multiheadattention import MultiheadAttention
 from .transformerencoderlayer import TransformerEncoderLayer
 
