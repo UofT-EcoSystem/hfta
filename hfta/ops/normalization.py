@@ -15,21 +15,20 @@ class LayerNorm(Module):
     *: any number of dimension, at least 1 dimension, such as Batch size.
     *normalized_shape: shoud be same as normalized_shape.
   """
+
   __constants__ = ['normalized_shape', 'eps', 'elementwise_affine', 'B']
   normalized_shape: Tuple[int, ...]
   eps: float
   elementwise_affine: bool
   B: int
 
-  def __init__(
-      self,
-      normalized_shape: _shape_t,
-      eps: float = 1e-5,
-      elementwise_affine: bool = True,
-      device=None,
-      dtype=None,
-      B=1,
-  ) -> None:
+  def __init__(self,
+               normalized_shape: _shape_t,
+               eps: float = 1e-5,
+               elementwise_affine: bool = True,
+               device=None,
+               dtype=None,
+               B=1) -> None:
     factory_kwargs = {'device': device, 'dtype': dtype}
     super(LayerNorm, self).__init__()
     if isinstance(normalized_shape, numbers.Integral):
@@ -41,9 +40,9 @@ class LayerNorm(Module):
     self.elementwise_affine = elementwise_affine
     if self.elementwise_affine:
       self.weight = Parameter(
-          torch.empty((B, *normalized_shape), **factory_kwargs))
+          torch.empty((B,) + self.normalized_shape, **factory_kwargs))
       self.bias = Parameter(
-          torch.empty((B, *normalized_shape), **factory_kwargs))
+          torch.empty((B,) + self.normalized_shape, **factory_kwargs))
     else:
       self.register_parameter('weight', None)
       self.register_parameter('bias', None)

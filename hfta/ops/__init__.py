@@ -3,12 +3,12 @@ import torch.nn
 
 from .conv import Conv1d, Conv2d, ConvTranspose2d
 from .linear import Linear
-from .pool import MaxPool2d, AdaptiveAvgPool2d
+from .pooling import MaxPool2d, AdaptiveAvgPool2d
 from .dropout2d import Dropout2d
 from .batchnorm import BatchNorm1d, BatchNorm2d
-from .utils import testcase_automator
-from .embedding import Embedding
-from .layernorm import LayerNorm
+from .utils import testcase_automator, assert_allclose, dump_error_msg
+from .sparse import Embedding
+from .normalization import LayerNorm
 from .multiheadattention import MultiheadAttention
 from .transformerencoderlayer import TransformerEncoderLayer
 
@@ -27,6 +27,7 @@ _OPS_MAP = {
 }
 
 _HFTA_TORCH_IDENTICAL_OPS = {
+    torch.nn.Identity,
     torch.nn.ReLU,
     torch.nn.ReLU6,
     torch.nn.Tanh,

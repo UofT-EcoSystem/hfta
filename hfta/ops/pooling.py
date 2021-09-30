@@ -17,16 +17,14 @@ class _MaxPoolNd(Module):
   ceil_mode: bool
   B: int
 
-  def __init__(
-      self,
-      kernel_size: _size_any_t,
-      stride: Optional[_size_any_t] = None,
-      padding: _size_any_t = 0,
-      dilation: _size_any_t = 1,
-      return_indices: bool = False,
-      ceil_mode: bool = False,
-      B: int = 1,
-  ) -> None:
+  def __init__(self,
+               kernel_size: _size_any_t,
+               stride: Optional[_size_any_t] = None,
+               padding: _size_any_t = 0,
+               dilation: _size_any_t = 1,
+               return_indices: bool = False,
+               ceil_mode: bool = False,
+               B: int = 1) -> None:
     super(_MaxPoolNd, self).__init__()
     self.kernel_size = kernel_size
     self.stride = stride if (stride is not None) else kernel_size

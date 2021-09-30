@@ -2,23 +2,34 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from hfta.ops import get_hfta_op_for, testcase_automator
+from hfta.ops import (get_hfta_op_for, testcase_automator, assert_allclose,
+                      dump_error_msg)
 
 
-def testcase(B=3,
-             N=32,
-             input_dim=(20,),
-             num_embeddings=200,
-             embedding_dim=50,
-             padding_idx=None,
-             max_norm=None,
-             norm_type=2.,
-             scale_grad_by_freq=False,
-             sparse=False,
-             _weight=None):
+def testcase(
+    B=3,
+    N=32,
+    input_dim=(20,),
+    num_embeddings=200,
+    embedding_dim=50,
+    padding_idx=None,
+    max_norm=None,
+    norm_type=2.,
+    scale_grad_by_freq=False,
+    sparse=False,
+    _weight=None,
+    device=torch.device('cpu'),
+    x_dtype=torch.int,
+    param_dtype=torch.float,
+):
   with torch.no_grad():
     x_array = [
-        torch.randint(num_embeddings, [N] + list(input_dim)) for _ in range(B)
+        torch.randint(
+            num_embeddings,
+            [N] + list(input_dim),
+            device=device,
+            dtype=x_dtype,
+        ) for _ in range(B)
     ]
     x_fused = torch.cat([x.unsqueeze(0) for x in x_array], dim=0)
     args = (num_embeddings, embedding_dim)
@@ -29,6 +40,8 @@ def testcase(B=3,
         'scale_grad_by_freq': scale_grad_by_freq,
         'sparse': sparse,
         '_weight': _weight,
+        'device': device,
+        'dtype': param_dtype,
     }
     embedding_array = [nn.Embedding(*args, **kwargs) for _ in range(B)]
     embedding_fused = get_hfta_op_for(nn.Embedding, B=B)(*args, **kwargs)
@@ -39,13 +52,13 @@ def testcase(B=3,
     y_fused_actual = embedding_fused(x_fused)
     y_fused_expect = torch.cat([y.unsqueeze(0) for y in y_array], dim=0)
     try:
-      np.testing.assert_allclose(
-          y_fused_actual.numpy(),
-          y_fused_expect.numpy(),
+      assert_allclose(
+          y_fused_actual.cpu().numpy(),
+          y_fused_expect.cpu().numpy(),
           rtol=1e-4,
       )
     except AssertionError as e:
-      print(e)
+      dump_error_msg(e)
 
 
 if __name__ == '__main__':
@@ -58,5 +71,8 @@ if __name__ == '__main__':
           'num_embeddings': [50, 200, 2000],
           'embedding_dim': [32, 128, 786],
           'padding_idx': [0],
+          'device': [torch.device('cuda:0')],
+          'x_dtype': [torch.int, torch.long],
+          'param_dtype': [torch.float, torch.double],
       },
   )

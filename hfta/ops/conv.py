@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import math
 
 import torch
@@ -20,12 +21,8 @@ class _ConvNd(Module):
   ]
   __annotations__ = {'bias': Optional[torch.Tensor]}
 
-  def _conv_forward(
-      self,
-      input: Tensor,
-      weight: Tensor,
-      bias: Optional[Tensor],
-  ) -> Tensor:
+  def _conv_forward(self, input: Tensor, weight: Tensor,
+                    bias: Optional[Tensor]) -> Tensor:
     ...
 
   _in_channels: int
@@ -43,23 +40,21 @@ class _ConvNd(Module):
   bias: Optional[Tensor]
   B: int
 
-  def __init__(
-      self,
-      in_channels: int,
-      out_channels: int,
-      kernel_size: Tuple[int, ...],
-      stride: Tuple[int, ...],
-      padding: Tuple[int, ...],
-      dilation: Tuple[int, ...],
-      transposed: bool,
-      output_padding: Tuple[int, ...],
-      groups: int,
-      bias: bool,
-      padding_mode: str,
-      device=None,
-      dtype=None,
-      B: int = 1,
-  ) -> None:
+  def __init__(self,
+               in_channels: int,
+               out_channels: int,
+               kernel_size: Tuple[int, ...],
+               stride: Tuple[int, ...],
+               padding: Tuple[int, ...],
+               dilation: Tuple[int, ...],
+               transposed: bool,
+               output_padding: Tuple[int, ...],
+               groups: int,
+               bias: bool,
+               padding_mode: str,
+               device=None,
+               dtype=None,
+               B: int = 1) -> None:
     factory_kwargs = {'device': device, 'dtype': dtype}
     super(_ConvNd, self).__init__()
     if in_channels % groups != 0:
@@ -78,9 +73,9 @@ class _ConvNd(Module):
 
     valid_padding_modes = {'zeros', 'reflect', 'replicate', 'circular'}
     if padding_mode not in valid_padding_modes:
-      raise ValueError("padding_mode must be one of {}, but got "
-                       "padding_mode='{}'".format(valid_padding_modes,
-                                                  padding_mode))
+      raise ValueError(
+          "padding_mode must be one of {}, but got padding_mode='{}'".format(
+              valid_padding_modes, padding_mode))
     self.in_channels = in_channels
     self.out_channels = out_channels
     self.kernel_size = kernel_size
@@ -112,16 +107,12 @@ class _ConvNd(Module):
 
     if transposed:
       self.weight = Parameter(
-          torch.empty(
-              (B, in_channels, out_channels // groups, *kernel_size),
-              **factory_kwargs,
-          ))
+          torch.empty((B, in_channels, out_channels // groups, *kernel_size),
+                      **factory_kwargs))
     else:
       self.weight = Parameter(
-          torch.empty(
-              (B, out_channels, in_channels // groups, *kernel_size),
-              **factory_kwargs,
-          ))
+          torch.empty((B, out_channels, in_channels // groups, *kernel_size),
+                      **factory_kwargs))
     if bias:
       self.bias = Parameter(torch.empty((B, out_channels), **factory_kwargs))
     else:
@@ -199,8 +190,7 @@ class Conv1d(_ConvNd):
       padding_mode: str = 'zeros',  # TODO: refine this type
       device=None,
       dtype=None,
-      B: int = 1,
-  ) -> None:
+      B: int = 1) -> None:
     factory_kwargs = {'device': device, 'dtype': dtype}
     # we create new variables below to make mypy happy since kernel_size has
     # type Union[int, Tuple[int]] and kernel_size_ has type Tuple[int]
@@ -208,28 +198,22 @@ class Conv1d(_ConvNd):
     stride_ = _single(stride)
     padding_ = padding if isinstance(padding, str) else _single(padding)
     dilation_ = _single(dilation)
-    super(Conv1d, self).__init__(
-        in_channels,
-        out_channels,
-        kernel_size_,
-        stride_,
-        padding_,
-        dilation_,
-        False,
-        _single(0),
-        groups,
-        bias,
-        padding_mode,
-        **factory_kwargs,
-        B=B,
-    )
+    super(Conv1d, self).__init__(in_channels,
+                                 out_channels,
+                                 kernel_size_,
+                                 stride_,
+                                 padding_,
+                                 dilation_,
+                                 False,
+                                 _single(0),
+                                 groups,
+                                 bias,
+                                 padding_mode,
+                                 **factory_kwargs,
+                                 B=B)
 
-  def _conv_forward(
-      self,
-      input: Tensor,
-      weight: Tensor,
-      bias: Optional[Tensor],
-  ):
+  def _conv_forward(self, input: Tensor, weight: Tensor,
+                    bias: Optional[Tensor]):
     Lin = input.size(3)
     input = input.view(-1, self.B * self.in_channels, Lin)
     weight = weight.view(self.B * self.out_channels,
@@ -284,35 +268,28 @@ class Conv2d(_ConvNd):
       padding_mode: str = 'zeros',  # TODO: refine this type
       device=None,
       dtype=None,
-      B=1,
-  ) -> None:
+      B=1) -> None:
     factory_kwargs = {'device': device, 'dtype': dtype}
     kernel_size_ = _pair(kernel_size)
     stride_ = _pair(stride)
     padding_ = padding if isinstance(padding, str) else _pair(padding)
     dilation_ = _pair(dilation)
-    super(Conv2d, self).__init__(
-        in_channels,
-        out_channels,
-        kernel_size_,
-        stride_,
-        padding_,
-        dilation_,
-        False,
-        _pair(0),
-        groups,
-        bias,
-        padding_mode,
-        **factory_kwargs,
-        B=B,
-    )
+    super(Conv2d, self).__init__(in_channels,
+                                 out_channels,
+                                 kernel_size_,
+                                 stride_,
+                                 padding_,
+                                 dilation_,
+                                 False,
+                                 _pair(0),
+                                 groups,
+                                 bias,
+                                 padding_mode,
+                                 **factory_kwargs,
+                                 B=B)
 
-  def _conv_forward(
-      self,
-      input: Tensor,
-      weight: Tensor,
-      bias: Optional[Tensor],
-  ):
+  def _conv_forward(self, input: Tensor, weight: Tensor,
+                    bias: Optional[Tensor]):
     Hin, Win = input.size(3), input.size(4)
     input = input.view(-1, self.B * self.in_channels, Hin, Win)
     weight = weight.view(self.B * self.out_channels,
@@ -341,59 +318,53 @@ class Conv2d(_ConvNd):
 
 class _ConvTransposeNd(_ConvNd):
 
-  def __init__(
-      self,
-      in_channels,
-      out_channels,
-      kernel_size,
-      stride,
-      padding,
-      dilation,
-      transposed,
-      output_padding,
-      groups,
-      bias,
-      padding_mode,
-      device=None,
-      dtype=None,
-      B=1,
-  ) -> None:
+  def __init__(self,
+               in_channels,
+               out_channels,
+               kernel_size,
+               stride,
+               padding,
+               dilation,
+               transposed,
+               output_padding,
+               groups,
+               bias,
+               padding_mode,
+               device=None,
+               dtype=None,
+               B=1) -> None:
     if padding_mode != 'zeros':
       raise ValueError('Only "zeros" padding mode is supported for {}'.format(
           self.__class__.__name__))
 
     factory_kwargs = {'device': device, 'dtype': dtype}
-    super(_ConvTransposeNd, self).__init__(
-        in_channels,
-        out_channels,
-        kernel_size,
-        stride,
-        padding,
-        dilation,
-        transposed,
-        output_padding,
-        groups,
-        bias,
-        padding_mode,
-        **factory_kwargs,
-        B=B,
-    )
+    super(_ConvTransposeNd, self).__init__(in_channels,
+                                           out_channels,
+                                           kernel_size,
+                                           stride,
+                                           padding,
+                                           dilation,
+                                           transposed,
+                                           output_padding,
+                                           groups,
+                                           bias,
+                                           padding_mode,
+                                           **factory_kwargs,
+                                           B=B)
 
   # dilation being an optional parameter is for backwards
   # compatibility
-  def _output_padding(
-      self,
-      input: Tensor,
-      output_size: Optional[List[int]],
-      stride: List[int],
-      padding: List[int],
-      kernel_size: List[int],
-      dilation: Optional[List[int]] = None,
-  ) -> List[int]:
+  def _output_padding(self,
+                      input: Tensor,
+                      output_size: Optional[List[int]],
+                      stride: List[int],
+                      padding: List[int],
+                      kernel_size: List[int],
+                      dilation: Optional[List[int]] = None) -> List[int]:
     # Input format: [N, B, Cin, ...]
     if output_size is None:
-      # converting to list if was not already
-      ret = _single(self.output_padding)
+      ret = _single(
+          self.output_padding)  # converting to list if was not already
     else:
       # Given the input format as [N, B, Cin, ...], we need to exclude the first 3 items
       # This is modified from the original code.
@@ -456,49 +427,43 @@ class ConvTranspose2d(_ConvTransposeNd):
   Bias format: [B, Cout]
   """
 
-  def __init__(
-      self,
-      in_channels: int,
-      out_channels: int,
-      kernel_size: _size_2_t,
-      stride: _size_2_t = 1,
-      padding: _size_2_t = 0,
-      output_padding: _size_2_t = 0,
-      groups: int = 1,
-      bias: bool = True,
-      dilation: int = 1,
-      padding_mode: str = 'zeros',
-      device=None,
-      dtype=None,
-      B=1,
-  ) -> None:
+  def __init__(self,
+               in_channels: int,
+               out_channels: int,
+               kernel_size: _size_2_t,
+               stride: _size_2_t = 1,
+               padding: _size_2_t = 0,
+               output_padding: _size_2_t = 0,
+               groups: int = 1,
+               bias: bool = True,
+               dilation: int = 1,
+               padding_mode: str = 'zeros',
+               device=None,
+               dtype=None,
+               B=1) -> None:
     factory_kwargs = {'device': device, 'dtype': dtype}
     kernel_size = _pair(kernel_size)
     stride = _pair(stride)
     padding = _pair(padding)
     dilation = _pair(dilation)
     output_padding = _pair(output_padding)
-    super(ConvTranspose2d, self).__init__(
-        in_channels,
-        out_channels,
-        kernel_size,
-        stride,
-        padding,
-        dilation,
-        True,
-        output_padding,
-        groups,
-        bias,
-        padding_mode,
-        **factory_kwargs,
-        B=B,
-    )
+    super(ConvTranspose2d, self).__init__(in_channels,
+                                          out_channels,
+                                          kernel_size,
+                                          stride,
+                                          padding,
+                                          dilation,
+                                          True,
+                                          output_padding,
+                                          groups,
+                                          bias,
+                                          padding_mode,
+                                          **factory_kwargs,
+                                          B=B)
 
-  def forward(
-      self,
-      input: Tensor,
-      output_size: Optional[List[int]] = None,
-  ) -> torch.Tensor:
+  def forward(self,
+              input: Tensor,
+              output_size: Optional[List[int]] = None) -> Tensor:
     if self.padding_mode != 'zeros':
       raise ValueError(
           'Only `zeros` padding mode is supported for ConvTranspose2d')
