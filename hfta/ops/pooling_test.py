@@ -2,7 +2,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from hfta.ops import get_hfta_op_for, testcase_automator
+from hfta.ops import (get_hfta_op_for, testcase_automator, assert_allclose,
+                      dump_error_msg)
 
 
 def testcase_MaxPool2d(
@@ -16,9 +17,14 @@ def testcase_MaxPool2d(
     dilation=1,
     return_indices=False,
     ceil_mode=False,
+    device=torch.device('cpu'),
+    dtype=torch.float,
 ):
   with torch.no_grad():
-    x_array = [torch.rand(N, C, HWin, HWin) for _ in range(B)]
+    x_array = [
+        torch.rand(N, C, HWin, HWin, device=device, dtype=dtype)
+        for _ in range(B)
+    ]
     x_fused = torch.cat([x.unsqueeze(1) for x in x_array], dim=1)
     args = (kernel_size,)
     kwargs = {
@@ -40,24 +46,26 @@ def testcase_MaxPool2d(
       y_fused_actual = res_fused_actual
     y_fused_expect = torch.cat([y.unsqueeze(1) for y in y_array], dim=1)
     try:
-      np.testing.assert_allclose(
-          y_fused_actual.numpy(),
-          y_fused_expect.numpy(),
+      assert_allclose(
+          y_fused_actual.cpu().numpy(),
+          y_fused_expect.cpu().numpy(),
           rtol=1e-4,
       )
     except AssertionError as e:
-      print(e)
+      dump_error_msg(e)
     if return_indices:
       indices_fused_expect = torch.cat(
           [indices.unsqueeze(1) for indices in indices_array],
           dim=1,
       )
       try:
-        np.testing.assert_allclose(indices_fused_actual.numpy(),
-                                   indices_fused_expect.numpy(),
-                                   rtol=1e-4)
+        assert_allclose(
+            indices_fused_actual.cpu().numpy(),
+            indices_fused_expect.cpu().numpy(),
+            rtol=1e-4,
+        )
       except AssertionError as e:
-        print(e)
+        dump_error_msg(e)
 
 
 def testcase_AdaptiveAvgPool2d(
@@ -66,9 +74,14 @@ def testcase_AdaptiveAvgPool2d(
     C=16,
     HWin=28,
     output_size=(16, 16),
+    device=torch.device('cpu'),
+    dtype=torch.float,
 ):
   with torch.no_grad():
-    x_array = [torch.rand(N, C, HWin, HWin) for _ in range(B)]
+    x_array = [
+        torch.rand(N, C, HWin, HWin, device=device, dtype=dtype)
+        for _ in range(B)
+    ]
     x_fused = torch.cat([x.unsqueeze(1) for x in x_array], dim=1)
     args = (output_size,)
     pool_array = [nn.AdaptiveAvgPool2d(*args) for _ in range(B)]
@@ -77,13 +90,13 @@ def testcase_AdaptiveAvgPool2d(
     y_fused_actual = pool_fused(x_fused)
     y_fused_expect = torch.cat([y.unsqueeze(1) for y in y_array], dim=1)
     try:
-      np.testing.assert_allclose(
-          y_fused_actual.numpy(),
-          y_fused_expect.numpy(),
+      assert_allclose(
+          y_fused_actual.cpu().numpy(),
+          y_fused_expect.cpu().numpy(),
           rtol=1e-4,
       )
     except AssertionError as e:
-      print(e)
+      dump_error_msg(e)
 
 
 if __name__ == '__main__':
@@ -100,6 +113,8 @@ if __name__ == '__main__':
           'dilation': [2, 5],
           'return_indices': [True],
           'ceil_mode': [True],
+          'device': [torch.device('cuda:0')],
+          'dtype': [torch.double],
       },
   )
   testcase_automator(
@@ -118,5 +133,7 @@ if __name__ == '__main__':
               (None, None),
               9,
           ],
+          'device': [torch.device('cuda:0')],
+          'dtype': [torch.double],
       },
   )
