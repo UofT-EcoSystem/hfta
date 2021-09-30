@@ -12,21 +12,20 @@ class Linear(Module):
   *: any number of dimensions, such as Batch size.
   F: in_features.
   """
+
   __constants__ = ['in_features', 'out_features', 'B']
   in_features: int
   out_features: int
   weight: Tensor
   B: int
 
-  def __init__(
-      self,
-      in_features: int,
-      out_features: int,
-      bias: bool = True,
-      device=None,
-      dtype=None,
-      B=1,
-  ) -> None:
+  def __init__(self,
+               in_features: int,
+               out_features: int,
+               bias: bool = True,
+               device=None,
+               dtype=None,
+               B=1) -> None:
     factory_kwargs = {'device': device, 'dtype': dtype}
     super(Linear, self).__init__()
     self.in_features = in_features
@@ -51,15 +50,19 @@ class Linear(Module):
         bound = 1 / math.sqrt(fan_out) if fan_out > 0 else 0
         init.uniform_(self.bias[b], -bound, bound)
 
-  def forward(self, x: Tensor) -> Tensor:
-    old_shape = list(x.size())
-    x = x.view(old_shape[0], -1, old_shape[-1])
+  def forward(self, input: Tensor) -> Tensor:
+    old_shape = list(input.size())
+    input = input.view(old_shape[0], -1, old_shape[-1])
     if self.bias is None:
-      res = torch.bmm(x, self.weight)
+      res = torch.bmm(input, self.weight)
     else:
-      res = torch.baddbmm(self.bias, x, self.weight)
+      res = torch.baddbmm(self.bias, input, self.weight)
     old_shape[-1] = self.out_features
     return res.view(old_shape)
+
+  def extra_repr(self) -> str:
+    return 'in_features={}, out_features={}, bias={}, B={}'.format(
+        self.in_features, self.out_features, self.bias is not None, self.B)
 
   def snatch_parameters(self, other, b):
     assert isinstance(other, nn.Linear)

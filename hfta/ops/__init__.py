@@ -27,6 +27,7 @@ _OPS_MAP = {
 }
 
 _HFTA_TORCH_IDENTICAL_OPS = {
+    torch.nn.Identity,
     torch.nn.ReLU,
     torch.nn.ReLU6,
     torch.nn.Tanh,
