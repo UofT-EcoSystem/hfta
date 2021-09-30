@@ -6,9 +6,8 @@ from .linear import Linear
 from .pool import MaxPool2d, AdaptiveAvgPool2d
 from .dropout2d import Dropout2d
 from .batchnorm import BatchNorm1d, BatchNorm2d
-from .utils import (testcase_automator, support_dtype, assert_allclose,
-                    dump_error_msg)
-from .embedding import Embedding
+from .utils import testcase_automator, assert_allclose, dump_error_msg
+from .sparse import Embedding
 from .layernorm import LayerNorm
 from .multiheadattention import MultiheadAttention
 from .transformerencoderlayer import TransformerEncoderLayer

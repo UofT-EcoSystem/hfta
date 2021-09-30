@@ -23,17 +23,6 @@ def dump_error_msg(e):
   print('[ End ] ==============================================\n')
 
 
-def support_dtype(device, dtype):
-  ret = True
-  if str(device) == 'cpu':
-    if dtype is torch.half:
-      ret = False
-
-  if not ret:
-    print('dtype {} not supported on device {} ...'.format(dtype, device))
-  return ret
-
-
 def assert_allclose(
     actual,
     desired,

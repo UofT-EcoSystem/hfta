@@ -1,8 +1,7 @@
 import numpy as np
 import torch
 
-from hfta.ops import (get_hfta_op_for, testcase_automator, support_dtype,
-                      assert_allclose)
+from hfta.ops import (get_hfta_op_for, testcase_automator, assert_allclose)
 
 
 def testcase(
@@ -14,8 +13,6 @@ def testcase(
     device=torch.device('cpu'),
     dtype=torch.float,
 ):
-  if not support_dtype(device, dtype):
-    return
   with torch.no_grad():
     x_array = [
         torch.ones(N, C, HWin, HWin, device=device, dtype=dtype)
@@ -52,6 +49,6 @@ if __name__ == '__main__':
           'C': [2000],
           'HWin': [8, 32],
           'device': [torch.device('cuda:0')],
-          'dtype': [torch.half, torch.double],
+          'dtype': [torch.double],
       },
   )

@@ -31,20 +31,18 @@ class Embedding(Module):
   addition: Tensor
   B: int
 
-  def __init__(
-      self,
-      num_embeddings: int,
-      embedding_dim: int,
-      padding_idx: Optional[int] = None,
-      max_norm: Optional[float] = None,
-      norm_type: float = 2.,
-      scale_grad_by_freq: bool = False,
-      sparse: bool = False,
-      _weight: Optional[Tensor] = None,
-      device=None,
-      dtype=None,
-      B=1,
-  ) -> None:
+  def __init__(self,
+               num_embeddings: int,
+               embedding_dim: int,
+               padding_idx: Optional[int] = None,
+               max_norm: Optional[float] = None,
+               norm_type: float = 2.,
+               scale_grad_by_freq: bool = False,
+               sparse: bool = False,
+               _weight: Optional[Tensor] = None,
+               device=None,
+               dtype=None,
+               B=1) -> None:
     factory_kwargs = {'device': device, 'dtype': dtype}
     super(Embedding, self).__init__()
     self.num_embeddings = num_embeddings

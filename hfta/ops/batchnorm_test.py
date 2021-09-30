@@ -2,8 +2,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 import random
-from hfta.ops import (get_hfta_op_for, testcase_automator, support_dtype,
-                      assert_allclose, dump_error_msg)
+from hfta.ops import (get_hfta_op_for, testcase_automator, assert_allclose,
+                      dump_error_msg)
 
 
 def testcase_1d(
@@ -20,8 +20,6 @@ def testcase_1d(
     device=torch.device('cpu'),
     dtype=torch.float,
 ):
-  if not support_dtype(device, dtype):
-    return
   C = num_features
   with torch.no_grad():
     args = (num_features,)
@@ -98,8 +96,6 @@ def testcase_2d(
     device=torch.device('cpu'),
     dtype=torch.float,
 ):
-  if not support_dtype(device, dtype):
-    return
   C = num_features
   with torch.no_grad():
 
@@ -164,11 +160,8 @@ if __name__ == '__main__':
           'affine': [True, False],
           'track_running_stats': [True, False],
           'training': [True, False],
-          'device': [
-              torch.device('cpu'),
-              torch.device('cuda:0'),
-          ],
-          'dtype': [torch.half, torch.float, torch.double],
+          'device': [torch.device('cuda:0')],
+          'dtype': [torch.float, torch.double],
       },
   )
   testcase_automator(
@@ -182,10 +175,7 @@ if __name__ == '__main__':
           'affine': [True, False],
           'track_running_stats': [True, False],
           'training': [True, False],
-          'device': [
-              torch.device('cpu'),
-              torch.device('cuda:0'),
-          ],
-          'dtype': [torch.half, torch.float, torch.double],
+          'device': [torch.device('cuda:0')],
+          'dtype': [torch.float, torch.double],
       },
   )

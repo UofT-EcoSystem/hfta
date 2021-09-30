@@ -2,8 +2,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from hfta.ops import (get_hfta_op_for, testcase_automator, support_dtype,
-                      assert_allclose, dump_error_msg)
+from hfta.ops import (get_hfta_op_for, testcase_automator, assert_allclose,
+                      dump_error_msg)
 
 
 def testcase_Conv1d(
@@ -22,8 +22,6 @@ def testcase_Conv1d(
     device=torch.device('cpu'),
     dtype=torch.float,
 ):
-  if not support_dtype(device, dtype):
-    return
   with torch.no_grad():
     x_array = [
         torch.rand(N, Cin, Lin, device=device, dtype=dtype) for _ in range(B)
@@ -75,8 +73,6 @@ def testcase_Conv2d(
     device=torch.device('cpu'),
     dtype=torch.float,
 ):
-  if not support_dtype(device, dtype):
-    return
   with torch.no_grad():
     x_array = [
         torch.rand(N, Cin, HWin, HWin, device=device, dtype=dtype)
@@ -131,8 +127,6 @@ def testcase_ConvTranspose2d(
     device=torch.device('cpu'),
     dtype=torch.float,
 ):
-  if not support_dtype(device, dtype):
-    return
   with torch.no_grad():
     x_array = [
         torch.rand(N, Cin, HWin, HWin, device=device, dtype=dtype)
@@ -210,11 +204,8 @@ if __name__ == '__main__':
           'groups': [2],
           'bias': [False],
           'padding_mode': ['reflect', 'replicate', 'circular'],
-          'device': [
-              torch.device('cpu'),
-              torch.device('cuda:0'),
-          ],
-          'dtype': [torch.half, torch.float, torch.double],
+          'device': [torch.device('cuda:0')],
+          'dtype': [torch.float, torch.double],
       },
   )
 
@@ -234,11 +225,8 @@ if __name__ == '__main__':
           'groups': [2],
           'bias': [False],
           'padding_mode': ['reflect', 'replicate', 'circular'],
-          'device': [
-              torch.device('cpu'),
-              torch.device('cuda:0'),
-          ],
-          'dtype': [torch.half, torch.float, torch.double],
+          'device': [torch.device('cuda:0')],
+          'dtype': [torch.float, torch.double],
       },
   )
 
@@ -259,10 +247,7 @@ if __name__ == '__main__':
           'bias': [False],
           'dilation': [2],
           'output_size': [(32, 3, 16, 57, 58), (57, 58)],
-          'device': [
-              torch.device('cpu'),
-              torch.device('cuda:0'),
-          ],
-          'dtype': [torch.half, torch.float, torch.double],
+          'device': [torch.device('cuda:0')],
+          'dtype': [torch.float, torch.double],
       },
   )
