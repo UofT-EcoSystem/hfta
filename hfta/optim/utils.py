@@ -341,10 +341,12 @@ def _validate_range(name, val, lb=None, ub=None):
 
 def make_coefficient(name, value, lb=None, ub=None, is_tuple=False):
   if is_tuple:
-    res = tuple(v if isinstance(v, (int, float)) else Coefficient(name, v)
-                for v in value)
-    for r in res:
-      _validate_range(name, r, lb=lb, ub=ub)
+    res = tuple(v if isinstance(v, (int, float)) else Coefficient(
+        '{}[{}]'.format(name, i),
+        v,
+    ) for i, v in enumerate(value))
+    for i, r in enumerate(res):
+      _validate_range('{}[{}]'.format(name, i), r, lb=lb, ub=ub)
   else:
     res = value if isinstance(value, (int, float)) else Coefficient(name, value)
     _validate_range(name, res, lb=lb, ub=ub)

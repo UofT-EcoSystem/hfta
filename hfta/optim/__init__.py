@@ -2,19 +2,19 @@ import functools
 import torch.optim
 
 from .adadelta import Adadelta, PartiallyFusedAdadelta
-#from .adam import Adam, PartiallyFusedAdam
+from .adam import Adam, PartiallyFusedAdam
 from .lr_scheduler import StepLR, PartiallyFusedStepLR
 from .utils import (index_array_or_return_scalar,
                     consolidate_hyperparams_and_determine_B)
 
 _OPTIMIZERS_MAP = {
     torch.optim.Adadelta: Adadelta,
-    #torch.optim.Adam: Adam,
+    torch.optim.Adam: Adam,
 }
 
 _PARTIALLY_FUSED_OPTIMIZERS_MAP = {
     torch.optim.Adadelta: PartiallyFusedAdadelta,
-    #torch.optim.Adam: PartiallyFusedAdam,
+    torch.optim.Adam: PartiallyFusedAdam,
 }
 
 _LR_SCHEDULER_MAP = {
