@@ -15,9 +15,15 @@ def testcase_fused(
     eps=1e-8,
     weight_decay=0,
     amsgrad=False,
+    device=torch.device('cpu'),
+    dtype=torch.float,
 ):
-  net_array = [_TestNet() for _ in range(B)]
-  net_fused = _TestNet(B=B)
+  if B > 1 and isinstance(lr, (int, float)):
+    lr = [random.uniform(1e-4, 1e-2) for _ in range(B)]
+
+  kwargs = {'device': device, 'dtype': dtype}
+  net_array = [_TestNet(**kwargs) for _ in range(B)]
+  net_fused = _TestNet(B=B, **kwargs)
   optimizer_array = [
       optim.Adam(
           net_array[b].parameters(),
@@ -43,9 +49,15 @@ def testcase_fused(
                            optimizer_array)
 
 
-def testcase_partially_fused(B=3, amsgrad=False):
-  net_array = [_TestNet() for _ in range(B)]
-  net_fused = _TestNet(B=B, partially_fused=True)
+def testcase_partially_fused(
+    B=3,
+    amsgrad=False,
+    device=torch.device('cpu'),
+    dtype=torch.float,
+):
+  kwargs = {'device': device, 'dtype': dtype}
+  net_array = [_TestNet(**kwargs) for _ in range(B)]
+  net_fused = _TestNet(B=B, partially_fused=True, **kwargs)
   lr = [random.uniform(1e-4, 1e-2) for _ in range(B)]
   betas = (
       [random.uniform(0.8, 0.99) for _ in range(B)],
@@ -154,6 +166,8 @@ if __name__ == '__main__':
               0.0,
           ],
           'amsgrad': [True],
+          'device': [torch.device('cuda:0')],
+          'dtype': [torch.double],
       },
   )
   testcase_automator(
@@ -161,5 +175,7 @@ if __name__ == '__main__':
       {
           'B': [1, 5, 8],
           'amsgrad': [True],
+          'device': [torch.device('cuda:0')],
+          'dtype': [torch.double],
       },
   )

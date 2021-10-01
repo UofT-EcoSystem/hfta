@@ -6,7 +6,7 @@ import torch
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import EPOCH_DEPRECATION_WARNING
 
-from .utils import (_reduce_array_if_possible_for, _to_tensor,
+from .utils import (reduce_array_if_possible_for, _to_tensor,
                     _get_coeff_like_params_map, index_array_or_return_scalar)
 from .partial import PartiallyFusedLRScheduler
 

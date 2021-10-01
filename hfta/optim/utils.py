@@ -3,7 +3,7 @@ import torch.nn as nn
 import numpy as np
 import itertools
 
-from hfta.ops import get_hfta_op_for
+from hfta.ops import get_hfta_op_for, assert_allclose, dump_error_msg
 
 
 def _snatch_grads_unfused(op_list, op, b):
@@ -37,73 +37,86 @@ def _snatch_parameters_unfused(op_list, op, b):
 
 
 def _assert_params_unfused(op_list, op, b):
-  np.testing.assert_allclose(
-      op_list[b].weight.data.numpy(),
-      op.weight.data.numpy(),
+  assert_allclose(
+      op_list[b].weight.data.cpu().numpy(),
+      op.weight.data.cpu().numpy(),
       rtol=1e-4,
+      population_threshold=1e-2,
   )
   if op_list[b].bias is not None:
-    np.testing.assert_allclose(
-        op_list[b].bias.data.numpy(),
-        op.bias.data.numpy(),
+    assert_allclose(
+        op_list[b].bias.data.cpu().numpy(),
+        op.bias.data.cpu().numpy(),
         rtol=1e-4,
+        population_threshold=1e-2,
     )
 
 
 def _assert_params_linear(fused_op, op, b, fused=True):
   try:
     if fused:
-      np.testing.assert_allclose(
-          fused_op.weight.data[b].numpy(),
-          op.weight.data.transpose(0, 1).numpy(),
+      assert_allclose(
+          fused_op.weight.data[b].cpu().numpy(),
+          op.weight.data.transpose(0, 1).cpu().numpy(),
           rtol=1e-4,
+          population_threshold=1e-2,
       )
       if fused_op.bias is not None:
-        np.testing.assert_allclose(
-            fused_op.bias.data[b].numpy(),
-            op.bias.data.unsqueeze(0).numpy(),
+        assert_allclose(
+            fused_op.bias.data[b].cpu().numpy(),
+            op.bias.data.unsqueeze(0).cpu().numpy(),
             rtol=1e-4,
+            population_threshold=1e-2,
         )
     else:
       _assert_params_unfused(fused_op, op, b)
   except AssertionError as e:
-    print(e)
+    dump_error_msg(e)
 
 
 def _assert_params_conv2d(fused_op, op, b, fused=True):
   try:
     if fused:
-      np.testing.assert_allclose(
-          fused_op.weight.data[b].numpy(),
-          op.weight.data.numpy(),
+      assert_allclose(
+          fused_op.weight.data[b].cpu().numpy(),
+          op.weight.data.cpu().numpy(),
           rtol=1e-4,
+          population_threshold=1e-2,
       )
       if fused_op.bias is not None:
-        np.testing.assert_allclose(
-            fused_op.bias.data[b].numpy(),
-            op.bias.data.numpy(),
+        assert_allclose(
+            fused_op.bias.data[b].cpu().numpy(),
+            op.bias.data.cpu().numpy(),
             rtol=1e-4,
+            population_threshold=1e-2,
         )
     else:
       _assert_params_unfused(fused_op, op, b)
   except AssertionError as e:
-    print(e)
+    dump_error_msg(e)
 
 
 class _TestNet(nn.Module):
 
-  def __init__(self, B=0, partially_fused=False):
+  def __init__(
+      self,
+      B=0,
+      partially_fused=False,
+      device=torch.device('cpu'),
+      dtype=torch.float,
+  ):
     super(_TestNet, self).__init__()
-    self.conv1 = get_hfta_op_for(nn.Conv2d, B=B)(3, 16, 3, 3)
+    kwargs = {'device': device, 'dtype': dtype}
+    self.conv1 = get_hfta_op_for(nn.Conv2d, B=B)(256, 128, 3, 3, **kwargs)
     if partially_fused:
-      self.conv2 = [nn.Conv2d(64, 32, 5, 5) for _ in range(B)]
+      self.conv2 = [nn.Conv2d(128, 256, 5, 5, **kwargs) for _ in range(B)]
     else:
-      self.conv2 = get_hfta_op_for(nn.Conv2d, B=B)(64, 32, 5, 5)
+      self.conv2 = get_hfta_op_for(nn.Conv2d, B=B)(128, 256, 5, 5, **kwargs)
     if partially_fused:
-      self.linear1 = [nn.Linear(10, 30) for _ in range(B)]
+      self.linear1 = [nn.Linear(500, 1000, **kwargs) for _ in range(B)]
     else:
-      self.linear1 = get_hfta_op_for(nn.Linear, B=B)(10, 30)
-    self.linear2 = get_hfta_op_for(nn.Linear, B=B)(100, 20)
+      self.linear1 = get_hfta_op_for(nn.Linear, B=B)(500, 1000, **kwargs)
+    self.linear2 = get_hfta_op_for(nn.Linear, B=B)(1000, 500, **kwargs)
     self.partially_fused = partially_fused
 
   def snatch_parameters(self, net, b):
@@ -223,22 +236,7 @@ def _optim_testing_procedure(
   _verify_test_nets_params(net_fused, net_array)
 
 
-def _validate_range_for_element(name, e, lb, ub):
-  if e < lb or e > ub:
-    raise ValueError("Invalid {}: {}".format(name, val))
-
-
-def _validate_range(name, val, lb, ub):
-  if isinstance(val, (float, int)):
-    _validate_range_for_element(name, val, lb, ub)
-  elif isinstance(val, (list, tuple, torch.Tensor, np.ndarray)):
-    for e in val:
-      _validate_range_for_element(name, e, lb, ub)
-  else:
-    raise ValueError("Unsupported type({}): {}".format(val, type(val)))
-
-
-def _to_tensor(coeff, B, dtype=torch.float):
+def _to_tensor(coeff, B, dtype=torch.float, device=torch.device('cpu')):
   if isinstance(coeff, (float, int)):
     res = coeff
   elif isinstance(coeff, (list, tuple, np.ndarray)):
@@ -246,10 +244,10 @@ def _to_tensor(coeff, B, dtype=torch.float):
       assert len(coeff) == B
     else:
       assert len(coeff.shape) == 1 and coeff.shape[0] == B
-    res = torch.as_tensor(coeff, dtype=dtype)
+    res = torch.as_tensor(coeff, dtype=dtype, device=device)
   elif isinstance(coeff, torch.Tensor):
     assert coeff.dim() == 1 and coeff.size(0) == B
-    res = coeff
+    res = coeff.to(dtype=dtype, device=device)
   else:
     raise ValueError("Unsupported type({}): {}".format(coeff, type(coeff)))
   return res
@@ -286,14 +284,73 @@ def _broadcastablize(optimizer, name, B, is_tuple=False):
       group[name] = _get_coeff_like_params_map(coeff, group['params'], B)
 
 
-def _move_coeff_to_same_device(group, name, p, is_tuple=False):
-  if is_tuple:
-    for coeff in group[name]:
-      if isinstance(coeff, dict):
-        coeff[p] = coeff[p].to(p.device)
+class Coefficient:
+
+  def __init__(self, name, value):
+    if not isinstance(value, (list, tuple, torch.Tensor, np.ndarray)):
+      raise ValueError("Unsupported {} type({}): {}".format(
+          name, value, type(value)))
+
+    self._name = name
+    self._value = value
+    self._ddt_map = {}  # (device, dtype) -> tensor
+
+  def _validate_range_for_element(self, i, e, lb=None, ub=None):
+    if (lb is not None and e < lb) or (ub is not None and e > ub):
+      raise ValueError("Invalid {}[{}]: {}".format(self._name, i, e))
+
+  def validate_range(self, lb=None, ub=None):
+    for i, e in enumerate(self._value):
+      self._validate_range_for_element(i, e, lb=lb, ub=ub)
+
+  def _update_ddt_map(self, device, dtype):
+    if isinstance(self._value, (list, tuple, np.ndarray)):
+      self._ddt_map[(device, dtype)] = torch.as_tensor(
+          self._value,
+          dtype=dtype,
+          device=device,
+      )
+    elif isinstance(self._value, torch.Tensor):
+      self._ddt_map[(device, dtype)] = self._value.to(
+          dtype=dtype,
+          device=device,
+      )
+    else:
+      raise ValueError("Unsupported type({}): {}".format(
+          self._value, type(self._value)))
+
+  def __getitem__(self, p):
+    k = (p.device, p.dtype)
+    if k not in self._ddt_map:
+      self._update_ddt_map(p.device, p.dtype)
+    B = self._ddt_map[k].size(0)
+    return self._ddt_map[k].view(B, *([1] * (p.dim() - 1)))
+
+
+def is_coefficient(v):
+  return isinstance(v, Coefficient)
+
+
+def _validate_range(name, val, lb=None, ub=None):
+  if is_coefficient(val):
+    val.validate_range(lb=lb, ub=ub)
   else:
-    if isinstance(group[name], dict):
-      group[name][p] = group[name][p].to(p.device)
+    if (lb is not None and val < lb) or (ub is not None and val > ub):
+      raise ValueError("Invalid {}: {}".format(name, val))
+
+
+def make_coefficient(name, value, lb=None, ub=None, is_tuple=False):
+  if is_tuple:
+    res = tuple(v if isinstance(v, (int, float)) else Coefficient(
+        '{}[{}]'.format(name, i),
+        v,
+    ) for i, v in enumerate(value))
+    for i, r in enumerate(res):
+      _validate_range('{}[{}]'.format(name, i), r, lb=lb, ub=ub)
+  else:
+    res = value if isinstance(value, (int, float)) else Coefficient(name, value)
+    _validate_range(name, res, lb=lb, ub=ub)
+  return res
 
 
 def index_array_or_return_scalar(array_or_scalar, b):
@@ -309,7 +366,7 @@ def index_array_or_return_scalar(array_or_scalar, b):
         array_or_scalar, type(array_or_scalar)))
 
 
-def _reduce_array_if_possible(arr):
+def reduce_array_if_possible(arr):
   if isinstance(arr, (list, tuple, np.ndarray, torch.Tensor)):
     first = arr[0]
     for e in arr[1:]:
@@ -323,8 +380,8 @@ def _reduce_array_if_possible(arr):
     return arr
 
 
-def _reduce_array_if_possible_for(*coeffs):
-  return (_reduce_array_if_possible(coeff) for coeff in coeffs)
+def reduce_array_if_possible_for(*coeffs):
+  return (reduce_array_if_possible(coeff) for coeff in coeffs)
 
 
 def consolidate_hyperparams_and_determine_B(args, hp_names):

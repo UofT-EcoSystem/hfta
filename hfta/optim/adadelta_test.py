@@ -8,9 +8,21 @@ from hfta.optim import get_hfta_optim_for, index_array_or_return_scalar
 from utils import _TestNet, _optim_testing_procedure
 
 
-def testcase_fused(B=3, lr=1.0, rho=0.9, eps=1e-6, weight_decay=0):
-  net_array = [_TestNet() for _ in range(B)]
-  net_fused = _TestNet(B=B)
+def testcase_fused(
+    B=3,
+    lr=1.0,
+    rho=0.9,
+    eps=1e-6,
+    weight_decay=0,
+    device=torch.device('cpu'),
+    dtype=torch.float,
+):
+  if B > 1 and isinstance(lr, (int, float)):
+    lr = [random.uniform(0.5, 2.0) for _ in range(B)]
+
+  kwargs = {'device': device, 'dtype': dtype}
+  net_array = [_TestNet(**kwargs) for _ in range(B)]
+  net_fused = _TestNet(B=B, **kwargs)
   optimizer_array = [
       optim.Adadelta(
           net_array[b].parameters(),
@@ -31,9 +43,14 @@ def testcase_fused(B=3, lr=1.0, rho=0.9, eps=1e-6, weight_decay=0):
                            optimizer_array)
 
 
-def testcase_partially_fused(B=3):
-  net_array = [_TestNet() for _ in range(B)]
-  net_fused = _TestNet(B=B, partially_fused=True)
+def testcase_partially_fused(
+    B=3,
+    device=torch.device('cpu'),
+    dtype=torch.float,
+):
+  kwargs = {'device': device, 'dtype': dtype}
+  net_array = [_TestNet(**kwargs) for _ in range(B)]
+  net_fused = _TestNet(B=B, partially_fused=True, **kwargs)
   lr = [random.uniform(0.5, 2.0) for _ in range(B)]
   rho = [random.uniform(0.7, 0.99) for _ in range(B)]
   eps = [random.uniform(1e-7, 1e-5) for _ in range(B)]
@@ -111,11 +128,15 @@ if __name__ == '__main__':
               0.3,
               0.0,
           ],
+          'device': [torch.device('cuda:0')],
+          'dtype': [torch.double],
       },
   )
   testcase_automator(
       testcase_partially_fused,
       {
           'B': [1, 5, 8],
+          'device': [torch.device('cuda:0')],
+          'dtype': [torch.double],
       },
   )

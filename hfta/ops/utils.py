@@ -2,7 +2,7 @@ import torch
 import numpy as np
 import re
 
-RE_PARSE_RATIO = re.compile('Mismatched elements: \d+ \/ \d+ \((\d+)\.(\d+)%\)')
+RE_PARSE_RATIO = re.compile('Mismatched elements: (\d+) \/ (\d+)')
 
 
 def testcase_automator(testcase, configs):
@@ -48,6 +48,5 @@ def assert_allclose(
     if not m:
       raise e
     else:
-      if (float('{}.{}'.format(m.group(1), m.group(2))) / 100 >=
-          population_threshold):
+      if (int(m.group(1)) / int(m.group(2))) >= population_threshold:
         raise e
