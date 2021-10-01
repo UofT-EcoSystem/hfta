@@ -1,119 +1,124 @@
 import numpy as np
 import torch
 
+from . import _functional as F
 from torch.optim import Optimizer
 
-from .utils import (_validate_range, _broadcastablize,
-                    _move_coeff_to_same_device, _reduce_array_if_possible_for,
-                    _zero_grad_if_cuda, index_array_or_return_scalar)
+from .utils import (make_coefficient, reduce_array_if_possible_for,
+                    index_array_or_return_scalar)
 from .partial import PartiallyFusedOptimizer
 
 
 class Adadelta(Optimizer):
-  """Implements Adadelta algorithm.
+  r"""Implements Adadelta algorithm.
 
-  It has been proposed in `ADADELTA: An Adaptive Learning Rate Method`__.
+    .. math::
+       \begin{aligned}
+            &\rule{110mm}{0.4pt}                                                                 \\
+            &\textbf{input}      : \gamma \text{ (lr)}, \: \theta_0 \text{ (params)},
+                \: f(\theta) \text{ (objective)}, \: \rho \text{ (decay)},
+                \: \lambda \text{ (weight decay)}                                                \\
+            &\textbf{initialize} :  v_0  \leftarrow 0 \: \text{ (square avg)},
+                \: u_0 \leftarrow 0 \: \text{ (accumulate variables)}                     \\[-1.ex]
+            &\rule{110mm}{0.4pt}                                                                 \\
+            &\textbf{for} \: t=1 \: \textbf{to} \: \ldots \: \textbf{do}                         \\
+            &\hspace{5mm}g_t           \leftarrow   \nabla_{\theta} f_t (\theta_{t-1})           \\
+            &\hspace{5mm}if \: \lambda \neq 0                                                    \\
+            &\hspace{10mm} g_t \leftarrow g_t + \lambda  \theta_{t-1}                            \\
+            &\hspace{5mm} v_t      \leftarrow v_{t-1} \rho + g^2_t (1 - \rho)                    \\
+            &\hspace{5mm}\Delta x_t    \leftarrow   \frac{\sqrt{u_{t-1} +
+                \epsilon }}{ \sqrt{v_t + \epsilon}  }g_t \hspace{21mm}                           \\
+            &\hspace{5mm} u_t  \leftarrow   u_{t-1}  \rho +
+                 \Delta x^2_t  (1 - \rho)                                                        \\
+            &\hspace{5mm}\theta_t      \leftarrow   \theta_{t-1} - \gamma  \Delta x_t            \\
+            &\rule{110mm}{0.4pt}                                                          \\[-1.ex]
+            &\bf{return} \:  \theta_t                                                     \\[-1.ex]
+            &\rule{110mm}{0.4pt}                                                          \\[-1.ex]
+       \end{aligned}
 
-  Arguments:
-    params (iterable): iterable of parameters to optimize or dicts defining
-      parameter groups
-    rho (float or a list/tuple/np.array/torch.Tensor of floats, optional):
-      coefficient used for computing a running average of squared
-      gradients (default: 0.9)
-    eps (float or a list/tuple/np.array/torch.Tensor of floats, optional): term
-      added to the denominator to improve numerical stability (default: 1e-6)
-    lr (float or a list/tuple/np.array/torch.Tensor of floats, optional):
-      coefficient that scale delta before it is applied to the parameters
-      (default: 1.0)
-    weight_decay (float or a list/tuple/np.array/torch.Tensor of floats,
-      optional): weight decay (L2 penalty) (default: 0)
+    For further details regarding the algorithm we refer to `ADADELTA: An Adaptive Learning Rate Method`_.
 
-  __ https://arxiv.org/abs/1212.5701
-  """
+    Args:
+        params (iterable): iterable of parameters to optimize or dicts defining
+            parameter groups
+        rho (float or a list/tuple/np.array/torch.Tensor of floats, optional): coefficient used for computing a running average
+            of squared gradients (default: 0.9)
+        eps (float or a list/tuple/np.array/torch.Tensor of floats, optional): term added to the denominator to improve
+            numerical stability (default: 1e-6)
+        lr (float or a list/tuple/np.array/torch.Tensor of floats, optional): coefficient that scale delta before it is applied
+            to the parameters (default: 1.0)
+        weight_decay (float or a list/tuple/np.array/torch.Tensor of floats, optional): weight decay (L2 penalty) (default: 0)
+
+    .. _ADADELTA\: An Adaptive Learning Rate Method:
+        https://arxiv.org/abs/1212.5701
+    """
 
   def __init__(self, params, lr=1.0, rho=0.9, eps=1e-6, weight_decay=0, B=1):
-    _validate_range('learning rate', lr, 0.0, float('inf'))
-    _validate_range('rho value', rho, 0.0, 1.0)
-    _validate_range('epsilon value', eps, 0.0, float('inf'))
-    _validate_range('weight_decay value', weight_decay, 0.0, float('inf'))
-    lr, rho, eps, weight_decay = _reduce_array_if_possible_for(
+    lr, rho, eps, weight_decay = reduce_array_if_possible_for(
         lr, rho, eps, weight_decay)
+    lr = make_coefficient('learning rate', lr, lb=0.0, ub=float('inf'))
+    rho = make_coefficient('rho value', rho, lb=0.0, ub=1.0)
+    eps = make_coefficient('epsilon value', eps, lb=0.0, ub=float('inf'))
+    weight_decay = make_coefficient('weight_decay value',
+                                    weight_decay,
+                                    lb=0.0,
+                                    ub=float('inf'))
 
     defaults = dict(lr=lr, rho=rho, eps=eps, weight_decay=weight_decay)
     super(Adadelta, self).__init__(params, defaults)
-    _broadcastablize(self, 'lr', B)
-    _broadcastablize(self, 'rho', B)
-    _broadcastablize(self, 'eps', B)
-    _broadcastablize(self, 'weight_decay', B)
-
-  def zero_grad(self):
-    if not _zero_grad_if_cuda(self):
-      super(Adadelta, self).zero_grad()
 
   @torch.no_grad()
   def step(self, closure=None):
     """Performs a single optimization step.
 
-    Arguments:
-      closure (callable, optional): A closure that reevaluates the model
-        and returns the loss.
-    """
+        Args:
+            closure (callable, optional): A closure that reevaluates the model
+                and returns the loss.
+        """
     loss = None
     if closure is not None:
       with torch.enable_grad():
         loss = closure()
 
     for group in self.param_groups:
+      params_with_grad = []
+      grads = []
+      square_avgs = []
+      acc_deltas = []
+      lr, rho, eps, weight_decay = group['lr'], group['rho'], group[
+          'eps'], group['weight_decay']
+
       for p in group['params']:
         if p.grad is None:
           continue
-        grad = p.grad
-        if grad.is_sparse:
+        params_with_grad.append(p)
+        if p.grad.is_sparse:
           raise RuntimeError('Adadelta does not support sparse gradients')
+        grads.append(p.grad)
+
         state = self.state[p]
 
-        # State initialization
+        # Lazy state initialization
         if len(state) == 0:
           state['step'] = 0
           state['square_avg'] = torch.zeros_like(
               p, memory_format=torch.preserve_format)
           state['acc_delta'] = torch.zeros_like(
               p, memory_format=torch.preserve_format)
-          _move_coeff_to_same_device(group, 'lr', p)
-          _move_coeff_to_same_device(group, 'rho', p)
-          _move_coeff_to_same_device(group, 'eps', p)
-          _move_coeff_to_same_device(group, 'weight_decay', p)
 
-        square_avg, acc_delta = state['square_avg'], state['acc_delta']
-        lr, rho, eps, weight_decay = (group['lr'], group['rho'], group['eps'],
-                                      group['weight_decay'])
+        square_avgs.append(state['square_avg'])
+        acc_deltas.append(state['acc_delta'])
 
         state['step'] += 1
 
-        if isinstance(weight_decay, dict) or weight_decay != 0:
-          if isinstance(weight_decay, dict):
-            grad = grad + weight_decay[p] * p
-          else:
-            grad = grad.add(p, alpha=weight_decay)
-
-        if isinstance(rho, dict):
-          square_avg.mul_(rho[p]).add_((1 - rho[p]) * grad * grad)
-        else:
-          square_avg.mul_(rho).addcmul_(grad, grad, value=1 - rho)
-        if isinstance(eps, dict):
-          std = square_avg.add(eps[p]).sqrt_()
-          delta = acc_delta.add(eps[p]).sqrt_().div_(std).mul_(grad)
-        else:
-          std = square_avg.add(eps).sqrt_()
-          delta = acc_delta.add(eps).sqrt_().div_(std).mul_(grad)
-        if isinstance(lr, dict):
-          p.add_(-lr[p] * delta)
-        else:
-          p.add_(delta, alpha=-lr)
-        if isinstance(rho, dict):
-          acc_delta.mul_(rho[p]).add_((1 - rho[p]) * delta * delta)
-        else:
-          acc_delta.mul_(rho).addcmul_(delta, delta, value=1 - rho)
+      F.adadelta(params_with_grad,
+                 grads,
+                 square_avgs,
+                 acc_deltas,
+                 lr=lr,
+                 rho=rho,
+                 eps=eps,
+                 weight_decay=weight_decay)
 
     return loss
 
