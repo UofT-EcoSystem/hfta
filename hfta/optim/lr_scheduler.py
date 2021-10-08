@@ -143,7 +143,7 @@ class _LRScheduler(object):
         self.last_epoch += 1
         values = self.get_lr()
       else:
-        epoch, = _reduce_array_if_possible_for(epoch)
+        epoch, = reduce_array_if_possible_for(epoch)
         epoch = _to_tensor(epoch, self.B, dtype=torch.long)
         warnings.warn(EPOCH_DEPRECATION_WARNING, UserWarning)
         self.last_epoch = epoch
@@ -187,7 +187,7 @@ class StepLR(_LRScheduler):
   """
 
   def __init__(self, optimizer, step_size, gamma=0.1, last_epoch=-1, B=1):
-    step_size, gamma, last_epoch = _reduce_array_if_possible_for(
+    step_size, gamma, last_epoch = reduce_array_if_possible_for(
         step_size, gamma, last_epoch)
     step_size, gamma, last_epoch = (_to_tensor(step_size, B, dtype=torch.long),
                                     _to_tensor(gamma, B),
