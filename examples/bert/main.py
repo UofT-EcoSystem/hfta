@@ -254,7 +254,7 @@ def train(args, model, train_data, optimizer, epoch, B, scaler=None):
 
     # Starting each batch, we detach the hidden state from how it was previously produced.
     # If we didn't, the model would try backpropagating all the way to start of the dataset.
-    optimizer.zero_grad()
+    optimizer.zero_grad(set_to_none=True)
 
     if args.device == "cuda":
       with amp.autocast(enabled=args.amp):

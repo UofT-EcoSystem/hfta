@@ -413,7 +413,7 @@ for epoch in range(args.epochs):
     # (1) Update D network: maximize log(D(x)) + log(1 - D(G(z)))
     ###########################
     # train with real
-    netD.zero_grad()
+    netD.zero_grad(set_to_none=True)
     real_cpu = data[0].to(device)
     batch_size = real_cpu.size(0)
     if B > 0:
@@ -477,7 +477,7 @@ for epoch in range(args.epochs):
     ############################
     # (2) Update G network: maximize log(D(G(z)))
     ###########################
-    netG.zero_grad()
+    netG.zero_grad(set_to_none=True)
     label.fill_(real_label)  # fake labels are real for generator cost
     if args.device == 'cuda':
       with amp.autocast(enabled=args.amp):

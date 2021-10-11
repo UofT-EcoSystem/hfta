@@ -395,13 +395,3 @@ def consolidate_hyperparams_and_determine_B(args, hp_names):
     else:
       assert len(hp) == B
   return B
-
-
-def _zero_grad_if_cuda(optimizer):
-  if optimizer.param_groups[0]['params'][0].is_cuda:
-    for group in optimizer.param_groups:
-      for p in group['params']:
-        p.grad = None
-    return True
-  else:
-    return False
