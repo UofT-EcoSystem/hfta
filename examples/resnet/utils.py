@@ -32,7 +32,7 @@ def train(args,
     if B > 0:
       data = data.unsqueeze(1).expand(-1, B, -1, -1, -1)
       target = target.repeat(B)
-    optimizer.zero_grad()
+    optimizer.zero_grad(set_to_none=True)
 
     if args.device == "cuda":
       with amp.autocast(enabled=args.amp):

@@ -2,7 +2,7 @@ import itertools
 import numpy as np
 import torch
 
-from .utils import index_array_or_return_scalar, _zero_grad_if_cuda
+from .utils import index_array_or_return_scalar
 
 
 class PartiallyFusedOptimizer:
@@ -15,12 +15,11 @@ class PartiallyFusedOptimizer:
     self._fused_optimizer = fused_optimizer
     self._unfused_optimizers = unfused_optimizers
 
-  def zero_grad(self):
+  def zero_grad(self, set_to_none=False):
     if self._fused_optimizer is not None:
-      self._fused_optimizer.zero_grad()
+      self._fused_optimizer.zero_grad(set_to_none=set_to_none)
     for ufo in self._unfused_optimizers:
-      if not _zero_grad_if_cuda(ufo):
-        ufo.zero_grad()
+      ufo.zero_grad(set_to_none=set_to_none)
 
   def step(self, closure=None):
     if self._fused_optimizer is not None:
@@ -40,8 +39,8 @@ class PartiallyFusedOptimizer:
           *(ufo.param_groups for ufo in self._unfused_optimizers),
       )
     else:
-      return itertools.chain(*(ufo.param_groups for ufo in self._unfused_optimizers))
-
+      return itertools.chain(
+          *(ufo.param_groups for ufo in self._unfused_optimizers))
 
   @property
   def fused_param_groups(self):

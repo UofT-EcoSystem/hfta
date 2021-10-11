@@ -173,7 +173,7 @@ def main(args):
       if B > 0:
         points = points.unsqueeze(0).expand(B, -1, -1, -1).contiguous()
         target = target.repeat(B)
-      optimizer.zero_grad()
+      optimizer.zero_grad(set_to_none=True)
       if args.device == 'cuda':
         with amp.autocast(enabled=args.amp):
           pred, trans, trans_feat = classifier(points)

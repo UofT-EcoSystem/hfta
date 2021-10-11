@@ -251,7 +251,7 @@ for epoch in range(opt.epochs):
     if B > 0:
       points = points.unsqueeze(0).expand(B, -1, -1, -1).contiguous()
       target = target.unsqueeze(0).expand(B, -1, -1)
-    optimizer.zero_grad()
+    optimizer.zero_grad(set_to_none=True)
     if opt.device == 'cuda':
       with amp.autocast(enabled=opt.amp):
         pred, trans, trans_feat = classifier(points)

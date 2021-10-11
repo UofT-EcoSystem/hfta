@@ -274,7 +274,7 @@ def train(args, model, criterion, optimizer, scaler, device, train_loader,
     if args.warmup_data_loading:
       continue
 
-    optimizer.zero_grad()
+    optimizer.zero_grad(set_to_none=True)
 
     inputs, labels = inputs.to(device), labels.to(device)
     batch_size = inputs.size(0)
