@@ -99,7 +99,6 @@ def testcase_AdaptiveAvgPool2d(
       dump_error_msg(e)
 
 
-
 def testcase_AvgPool2d(
     B=3,
     N=32,
@@ -117,7 +116,11 @@ def testcase_AvgPool2d(
         for _ in range(B)
     ]
     x_fused = torch.cat([x.unsqueeze(1) for x in x_array], dim=1)
-    args = (kernel_size, stride, padding,)
+    args = (
+        kernel_size,
+        stride,
+        padding,
+    )
     pool_array = [nn.AvgPool2d(*args) for _ in range(B)]
     pool_fused = get_hfta_op_for(nn.AvgPool2d, B=B)(*args)
     y_array = [pool_array[b](x_array[b]) for b in range(B)]
@@ -131,7 +134,6 @@ def testcase_AvgPool2d(
       )
     except AssertionError as e:
       dump_error_msg(e)
-
 
 
 if __name__ == '__main__':
@@ -185,17 +187,8 @@ if __name__ == '__main__':
               (17, 6),
               9,
           ],
-          'stride': [
-            None,
-            (1, 2),
-            (2, 2),
-            3
-          ],
-          'padding': [
-            0,
-            (1, 1),
-            1
-          ],
+          'stride': [None, (1, 2), (2, 2), 3],
+          'padding': [0, (1, 1), 1],
           'device': [torch.device('cuda:0')],
           'dtype': [torch.double],
       },

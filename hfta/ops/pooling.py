@@ -99,17 +99,17 @@ class AdaptiveAvgPool2d(_AdaptiveAvgPoolNd):
 
 
 class _AvgPoolNd(Module):
-    __constants__ = ['kernel_size', 'stride', 'padding', 'ceil_mode', 'count_include_pad', 'B']
+  __constants__ = [
+      'kernel_size', 'stride', 'padding', 'ceil_mode', 'count_include_pad', 'B'
+  ]
 
-    def extra_repr(self) -> str:
-        return 'kernel_size={}, stride={}, padding={}, B={}'.format(
-            self.kernel_size, self.stride, self.padding, self.B
-        )
-
+  def extra_repr(self) -> str:
+    return 'kernel_size={}, stride={}, padding={}, B={}'.format(
+        self.kernel_size, self.stride, self.padding, self.B)
 
 
 class AvgPool2d(_AvgPoolNd):
-    r"""Applies a 2D average pooling over an input signal composed of several input
+  r"""Applies a 2D average pooling over an input signal composed of several input
     planes.
     In the simplest case, the output value of the layer with input size :math:`(N, B, C, H, W)`,
     output :math:`(N, B, C, H_{out}, W_{out})` and :attr:`kernel_size` :math:`(kH, kW)`
@@ -151,30 +151,39 @@ class AvgPool2d(_AvgPoolNd):
         >>> input = torch.randn(20, 2, 16, 50, 32)
         >>> output = m(input)
     """
-    __constants__ = ['kernel_size', 'stride', 'padding', 'ceil_mode', 'count_include_pad', 'divisor_override', 'B']
+  __constants__ = [
+      'kernel_size', 'stride', 'padding', 'ceil_mode', 'count_include_pad',
+      'divisor_override', 'B'
+  ]
 
-    kernel_size: _size_2_t
-    stride: _size_2_t
-    padding: _size_2_t
-    ceil_mode: bool
-    count_include_pad: bool
+  kernel_size: _size_2_t
+  stride: _size_2_t
+  padding: _size_2_t
+  ceil_mode: bool
+  count_include_pad: bool
 
-    def __init__(self, kernel_size: _size_2_t, stride: Optional[_size_2_t] = None, padding: _size_2_t = 0,
-                 ceil_mode: bool = False, count_include_pad: bool = True, divisor_override: Optional[int] = None,
-                 B: Optional[int] = 0) -> None:
-        super(AvgPool2d, self).__init__()
-        self.kernel_size = kernel_size
-        self.stride = stride if (stride is not None) else kernel_size
-        self.padding = padding
-        self.ceil_mode = ceil_mode
-        self.count_include_pad = count_include_pad
-        self.divisor_override = divisor_override
-        self.B = B
+  def __init__(self,
+               kernel_size: _size_2_t,
+               stride: Optional[_size_2_t] = None,
+               padding: _size_2_t = 0,
+               ceil_mode: bool = False,
+               count_include_pad: bool = True,
+               divisor_override: Optional[int] = None,
+               B: Optional[int] = 0) -> None:
+    super(AvgPool2d, self).__init__()
+    self.kernel_size = kernel_size
+    self.stride = stride if (stride is not None) else kernel_size
+    self.padding = padding
+    self.ceil_mode = ceil_mode
+    self.count_include_pad = count_include_pad
+    self.divisor_override = divisor_override
+    self.B = B
 
-    def forward(self, input: Tensor) -> Tensor:
-        N, B, C, H, W = input.size()
-        input = input.view(N * B, C, H, W)
-        out = F.avg_pool2d(input, self.kernel_size, self.stride,
-                            self.padding, self.ceil_mode, self.count_include_pad, self.divisor_override)
-        _, _, H_out, W_out = out.size()
-        return out.view(N, B, C, H_out, W_out)
+  def forward(self, input: Tensor) -> Tensor:
+    N, B, C, H, W = input.size()
+    input = input.view(N * B, C, H, W)
+    out = F.avg_pool2d(input, self.kernel_size, self.stride, self.padding,
+                       self.ceil_mode, self.count_include_pad,
+                       self.divisor_override)
+    _, _, H_out, W_out = out.size()
+    return out.view(N, B, C, H_out, W_out)
