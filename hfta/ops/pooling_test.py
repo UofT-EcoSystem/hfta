@@ -99,6 +99,43 @@ def testcase_AdaptiveAvgPool2d(
       dump_error_msg(e)
 
 
+def testcase_AvgPool2d(
+    B=3,
+    N=32,
+    C=16,
+    HWin=28,
+    kernel_size=(2, 2),
+    stride=(2, 2),
+    padding=(1, 1),
+    device=torch.device('cpu'),
+    dtype=torch.float,
+):
+  with torch.no_grad():
+    x_array = [
+        torch.rand(N, C, HWin, HWin, device=device, dtype=dtype)
+        for _ in range(B)
+    ]
+    x_fused = torch.cat([x.unsqueeze(1) for x in x_array], dim=1)
+    args = (
+        kernel_size,
+        stride,
+        padding,
+    )
+    pool_array = [nn.AvgPool2d(*args) for _ in range(B)]
+    pool_fused = get_hfta_op_for(nn.AvgPool2d, B=B)(*args)
+    y_array = [pool_array[b](x_array[b]) for b in range(B)]
+    y_fused_actual = pool_fused(x_fused)
+    y_fused_expect = torch.cat([y.unsqueeze(1) for y in y_array], dim=1)
+    try:
+      assert_allclose(
+          y_fused_actual.cpu().numpy(),
+          y_fused_expect.cpu().numpy(),
+          rtol=1e-4,
+      )
+    except AssertionError as e:
+      dump_error_msg(e)
+
+
 if __name__ == '__main__':
   testcase_automator(
       testcase_MaxPool2d,
@@ -133,6 +170,25 @@ if __name__ == '__main__':
               (None, None),
               9,
           ],
+          'device': [torch.device('cuda:0')],
+          'dtype': [torch.double],
+      },
+  )
+  testcase_automator(
+      testcase_AvgPool2d,
+      {
+          'B': [1, 2, 5, 10],
+          'N': [1, 8, 64],
+          'C': [3, 64, 128],
+          'HWin': [32, 256],
+          'kernel_size': [
+              (5, 5),
+              (7, 16),
+              (17, 6),
+              9,
+          ],
+          'stride': [None, (1, 2), (2, 2), 3],
+          'padding': [0, (1, 1), 1],
           'device': [torch.device('cuda:0')],
           'dtype': [torch.double],
       },

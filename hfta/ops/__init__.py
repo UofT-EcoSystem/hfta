@@ -3,7 +3,7 @@ import torch.nn
 
 from .conv import Conv1d, Conv2d, ConvTranspose2d
 from .linear import Linear
-from .pooling import MaxPool2d, AdaptiveAvgPool2d
+from .pooling import MaxPool2d, AdaptiveAvgPool2d, AvgPool2d
 from .dropout2d import Dropout2d
 from .batchnorm import BatchNorm1d, BatchNorm2d
 from .utils import testcase_automator, assert_allclose, dump_error_msg
@@ -19,6 +19,7 @@ _OPS_MAP = {
     torch.nn.Linear: Linear,
     torch.nn.MaxPool2d: MaxPool2d,
     torch.nn.AdaptiveAvgPool2d: AdaptiveAvgPool2d,
+    torch.nn.AvgPool2d: AvgPool2d,
     torch.nn.Dropout2d: Dropout2d,
     torch.nn.BatchNorm1d: BatchNorm1d,
     torch.nn.BatchNorm2d: BatchNorm2d,
