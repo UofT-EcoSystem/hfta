@@ -111,28 +111,9 @@ class _AvgPoolNd(Module):
 class AvgPool2d(_AvgPoolNd):
   r"""Applies a 2D average pooling over an input signal composed of several input
     planes.
-    In the simplest case, the output value of the layer with input size :math:`(N, B, C, H, W)`,
-    output :math:`(N, B, C, H_{out}, W_{out})` and :attr:`kernel_size` :math:`(kH, kW)`
-    can be precisely described as:
-    .. math::
-        out(N_i, B_i, C_j, h, w)  = \frac{1}{kH * kW} \sum_{m=0}^{kH-1} \sum_{n=0}^{kW-1}
-                               input(N_i, C_j, stride[0] \times h + m, stride[1] \times w + n)
-    If :attr:`padding` is non-zero, then the input is implicitly zero-padded on both sides
-    for :attr:`padding` number of points.
-    Note:
-        When ceil_mode=True, sliding windows are allowed to go off-bounds if they start within the left padding
-        or the input. Sliding windows that would start in the right padded region are ignored.
-    The parameters :attr:`kernel_size`, :attr:`stride`, :attr:`padding` can either be:
-        - a single ``int`` -- in which case the same value is used for the height and width dimension
-        - a ``tuple`` of two ints -- in which case, the first `int` is used for the height dimension,
-          and the second `int` for the width dimension
-    Args:
-        kernel_size: the size of the window
-        stride: the stride of the window. Default value is :attr:`kernel_size`
-        padding: implicit zero padding to be added on both sides
-        ceil_mode: when True, will use `ceil` instead of `floor` to compute the output shape
-        count_include_pad: when True, will include the zero-padding in the averaging calculation
-        divisor_override: if specified, it will be used as divisor, otherwise size of the pooling region will be used.
+    The additional argument: "B" is added to the constructor to support fused 
+    inputs, Otherwise, the usage is identical to those described here:
+        https://pytorch.org/docs/stable/generated/torch.nn.AvgPool2d.html
 
     Shape:
         - Input: :math:`(N, B, C, H_{in}, W_{in})` or :math:`(C, H_{in}, W_{in})`.
