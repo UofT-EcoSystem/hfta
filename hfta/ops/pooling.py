@@ -56,7 +56,7 @@ class MaxPool2d(_MaxPoolNd):
 
   def forward(self, input: Tensor) -> Tensor:
     N, B, C, H, W = input.size()
-    res = F.max_pool2d(input.view(N * B, C, H, W), self.kernel_size,
+    res = F.max_pool2d(input.reshape(N * B, C, H, W), self.kernel_size,
                        self.stride, self.padding, self.dilation, self.ceil_mode,
                        self.return_indices)
     if self.return_indices:
@@ -64,8 +64,8 @@ class MaxPool2d(_MaxPoolNd):
     else:
       y = res
     NxB, C, H, W = y.size()
-    y = y.view(N, B, C, H, W)
-    return (y, indices.view(N, B, C, H, W)) if self.return_indices else y
+    y = y.reshape(N, B, C, H, W)
+    return (y, indices.reshape(N, B, C, H, W)) if self.return_indices else y
 
 
 class _AdaptiveAvgPoolNd(Module):
@@ -93,9 +93,9 @@ class AdaptiveAvgPool2d(_AdaptiveAvgPoolNd):
 
   def forward(self, input: Tensor) -> Tensor:
     N, B, C, H, W = input.size()
-    output = F.adaptive_avg_pool2d(input.view(N * B, C, H, W), self.output_size)
+    output = F.adaptive_avg_pool2d(input.reshape(N * B, C, H, W), self.output_size)
     NxB, C, H, W = output.size()
-    return output.view(N, B, C, H, W)
+    return output.reshape(N, B, C, H, W)
 
 
 class _AvgPoolNd(Module):
@@ -162,9 +162,9 @@ class AvgPool2d(_AvgPoolNd):
 
   def forward(self, input: Tensor) -> Tensor:
     N, B, C, H, W = input.size()
-    input = input.view(N * B, C, H, W)
+    input = input.reshape(N * B, C, H, W)
     out = F.avg_pool2d(input, self.kernel_size, self.stride, self.padding,
                        self.ceil_mode, self.count_include_pad,
                        self.divisor_override)
     _, _, H_out, W_out = out.size()
-    return out.view(N, B, C, H_out, W_out)
+    return out.reshape(N, B, C, H_out, W_out)

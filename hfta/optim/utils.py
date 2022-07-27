@@ -257,7 +257,7 @@ def _get_coeff_like_params_map(coeff, params, B):
   res = {}
   for p in params:
     assert p.size(0) == B
-    res[p] = coeff.view(B, *([1] * (p.dim() - 1)))
+    res[p] = coeff.reshape(B, *([1] * (p.dim() - 1)))
   return res
 
 
@@ -324,7 +324,7 @@ class Coefficient:
     if k not in self._ddt_map:
       self._update_ddt_map(p.device, p.dtype)
     B = self._ddt_map[k].size(0)
-    return self._ddt_map[k].view(B, *([1] * (p.dim() - 1)))
+    return self._ddt_map[k].reshape(B, *([1] * (p.dim() - 1)))
 
 
 def is_coefficient(v):

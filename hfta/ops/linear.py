@@ -52,13 +52,13 @@ class Linear(Module):
 
   def forward(self, input: Tensor) -> Tensor:
     old_shape = list(input.size())
-    input = input.view(old_shape[0], -1, old_shape[-1])
+    input = input.reshape(old_shape[0], -1, old_shape[-1])
     if self.bias is None:
       res = torch.bmm(input, self.weight)
     else:
       res = torch.baddbmm(self.bias, input, self.weight)
     old_shape[-1] = self.out_features
-    return res.view(old_shape)
+    return res.reshape(old_shape)
 
   def extra_repr(self) -> str:
     return 'in_features={}, out_features={}, bias={}, B={}'.format(

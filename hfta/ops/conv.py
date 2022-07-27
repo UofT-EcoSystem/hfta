@@ -215,10 +215,10 @@ class Conv1d(_ConvNd):
   def _conv_forward(self, input: Tensor, weight: Tensor,
                     bias: Optional[Tensor]):
     Lin = input.size(3)
-    input = input.view(-1, self.B * self.in_channels, Lin)
-    weight = weight.view(self.B * self.out_channels,
+    input = input.reshape(-1, self.B * self.in_channels, Lin)
+    weight = weight.reshape(self.B * self.out_channels,
                          self.in_channels // self.groups, *self.kernel_size)
-    bias = bias.view(self.B * self.out_channels) if bias is not None else bias
+    bias = bias.reshape(self.B * self.out_channels) if bias is not None else bias
 
     if self.padding_mode != 'zeros':
       y = F.conv1d(
@@ -230,7 +230,7 @@ class Conv1d(_ConvNd):
       y = F.conv1d(input, weight, bias, self.stride, self.padding,
                    self.dilation, self.groups * self.B)
     Lout = y.size(2)
-    return y.view(-1, self.B, self.out_channels, Lout)
+    return y.reshape(-1, self.B, self.out_channels, Lout)
 
   def forward(self, input: Tensor) -> Tensor:
     return self._conv_forward(input, self.weight, self.bias)
@@ -291,10 +291,10 @@ class Conv2d(_ConvNd):
   def _conv_forward(self, input: Tensor, weight: Tensor,
                     bias: Optional[Tensor]):
     Hin, Win = input.size(3), input.size(4)
-    input = input.view(-1, self.B * self.in_channels, Hin, Win)
-    weight = weight.view(self.B * self.out_channels,
+    input = input.reshape(-1, self.B * self.in_channels, Hin, Win)
+    weight = weight.reshape(self.B * self.out_channels,
                          self.in_channels // self.groups, *self.kernel_size)
-    bias = bias.view(self.B * self.out_channels) if bias is not None else bias
+    bias = bias.reshape(self.B * self.out_channels) if bias is not None else bias
 
     if self.padding_mode != 'zeros':
       y = F.conv2d(
@@ -306,7 +306,7 @@ class Conv2d(_ConvNd):
       y = F.conv2d(input, weight, bias, self.stride, self.padding,
                    self.dilation, self.groups * self.B)
     Hout, Wout = y.size(2), y.size(3)
-    return y.view(-1, self.B, self.out_channels, Hout, Wout)
+    return y.reshape(-1, self.B, self.out_channels, Hout, Wout)
 
   def forward(self, input: Tensor) -> Tensor:
     return self._conv_forward(input, self.weight, self.bias)
@@ -476,18 +476,18 @@ class ConvTranspose2d(_ConvTransposeNd):
         self.dilation)  # type: ignore[arg-type]
 
     Hin, Win = input.size(3), input.size(4)
-    input = input.view(-1, self.B * self.in_channels, Hin, Win)
-    weight = self.weight.view(self.B * self.in_channels,
+    input = input.reshape(-1, self.B * self.in_channels, Hin, Win)
+    weight = self.weight.reshape(self.B * self.in_channels,
                               self.out_channels // self.groups,
                               *self.kernel_size)
-    bias = (self.bias.view(self.B * self.out_channels)
+    bias = (self.bias.reshape(self.B * self.out_channels)
             if self.bias is not None else self.bias)
 
     y = F.conv_transpose2d(input, weight, bias, self.stride, self.padding,
                            output_padding, self.groups * self.B, self.dilation)
 
     Hout, Wout = y.size(2), y.size(3)
-    return y.view(-1, self.B, self.out_channels, Hout, Wout)
+    return y.reshape(-1, self.B, self.out_channels, Hout, Wout)
 
   def snatch_parameters(self, other, b):
     assert isinstance(other, nn.ConvTranspose2d)

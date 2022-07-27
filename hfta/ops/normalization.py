@@ -59,8 +59,8 @@ class LayerNorm(Module):
     if self.elementwise_affine:
       inside_length = input.dim() - len(self.normalized_shape) - 1
       w_shape = [self.B] + ([1] * inside_length) + list(self.normalized_shape)
-      bias = self.bias.view(w_shape)
-      weight = self.weight.view(w_shape)
+      bias = self.bias.reshape(w_shape)
+      weight = self.weight.reshape(w_shape)
       res = torch.addcmul(bias, res, weight)
     return res
 

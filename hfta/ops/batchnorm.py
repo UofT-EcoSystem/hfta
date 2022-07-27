@@ -195,13 +195,13 @@ class _BatchNorm(_NormBase):
         used for normalization (i.e. in eval mode when buffers are not None).
         """
     self_weight, self_bias = (
-        self.weight.view(self.B * self.num_features),
-        self.bias.view(self.B * self.num_features),
+        self.weight.reshape(self.B * self.num_features),
+        self.bias.reshape(self.B * self.num_features),
     ) if self.affine else (self.weight, self.bias)
 
     self_running_mean, self_running_var = (
-        self.running_mean.view(self.B * self.num_features),
-        self.running_var.view(self.B * self.num_features),
+        self.running_mean.reshape(self.B * self.num_features),
+        self.running_var.reshape(self.B * self.num_features),
     ) if self.track_running_stats else (self.running_mean, self.running_var)
 
     res = F.batch_norm(
@@ -216,7 +216,7 @@ class _BatchNorm(_NormBase):
         bn_training,
         exponential_average_factor,
         self.eps,
-    ).view(shape)
+    ).reshape(shape)
 
     if (len(shape) == 3):
       res = res.transpose(0, 1)

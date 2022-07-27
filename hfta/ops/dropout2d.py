@@ -27,5 +27,5 @@ class Dropout2d(nn.Dropout2d):
   def forward(self, input: Tensor) -> Tensor:
     shape = list(input.size())
     new_shape = [shape[0] * shape[1]] + shape[2:]
-    y = super(Dropout2d, self).forward(input.view(new_shape))
-    return y.view(shape)
+    y = super(Dropout2d, self).forward(input.reshape(new_shape))
+    return y.reshape(shape)

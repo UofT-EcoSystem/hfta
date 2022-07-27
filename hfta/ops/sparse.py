@@ -85,9 +85,9 @@ class Embedding(Module):
       "input should have shape [{}, N, *]".format(self.B)
     self.addition = self.addition.to(input.device)
     addition_shape = [self.B] + ([1] * (input.dim() - 1))
-    addition = self.addition.view(addition_shape)
+    addition = self.addition.reshape(addition_shape)
     new_input = (input + addition)
-    res = F.embedding(new_input, self.weight.view(-1, self.embedding_dim),
+    res = F.embedding(new_input, self.weight.reshape(-1, self.embedding_dim),
                       self.padding_idx, self.max_norm, self.norm_type,
                       self.scale_grad_by_freq, self.sparse)
     return res

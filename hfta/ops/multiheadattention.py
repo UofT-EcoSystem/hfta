@@ -81,36 +81,36 @@ class MultiheadAttention(nn.Module):
 
     if self.B > 0:
       N = query.size(1)
-      query = query.contiguous().view(query.shape[0], -1, query.shape[-1])
-      key = key.contiguous().view(key.shape[0], -1, key.shape[-1])
-      value = value.contiguous().view(value.shape[0], -1, value.shape[-1])
+      query = query.contiguous().reshape(query.shape[0], -1, query.shape[-1])
+      key = key.contiguous().reshape(key.shape[0], -1, key.shape[-1])
+      value = value.contiguous().reshape(value.shape[0], -1, value.shape[-1])
 
     query = self.linear_q(query.contiguous())
     key = self.linear_k(key.contiguous())
     value = self.linear_v(value.contiguous())
 
     if self.B > 0:
-      query = query.view(self.B * N, -1, query.shape[-1])
-      key = key.view(self.B * N, -1, key.shape[-1])
-      value = value.view(self.B * N, -1, value.shape[-1])
+      query = query.reshape(self.B * N, -1, query.shape[-1])
+      key = key.reshape(self.B * N, -1, key.shape[-1])
+      value = value.reshape(self.B * N, -1, value.shape[-1])
 
     bsz, tgt_len, embed_dim = query.size()
     src_len = key.size(1)
 
     query *= self.scaling
 
-    query = query.contiguous().view(bsz, tgt_len, self.num_heads,
+    query = query.contiguous().reshape(bsz, tgt_len, self.num_heads,
                                     self.head_dim).transpose(1, 2)
-    query = query.contiguous().view(bsz * self.num_heads, tgt_len,
+    query = query.contiguous().reshape(bsz * self.num_heads, tgt_len,
                                     self.head_dim)
 
-    key = key.contiguous().view(bsz, src_len, self.num_heads,
+    key = key.contiguous().reshape(bsz, src_len, self.num_heads,
                                 self.head_dim).transpose(1, 2)
-    key = key.contiguous().view(bsz * self.num_heads, src_len, self.head_dim)
+    key = key.contiguous().reshape(bsz * self.num_heads, src_len, self.head_dim)
 
-    value = value.contiguous().view(bsz, src_len, self.num_heads,
+    value = value.contiguous().reshape(bsz, src_len, self.num_heads,
                                     self.head_dim).transpose(1, 2)
-    value = value.contiguous().view(bsz * self.num_heads, src_len,
+    value = value.contiguous().reshape(bsz * self.num_heads, src_len,
                                     self.head_dim)
 
     o_weights = torch.bmm(query, key.transpose(1, 2))
@@ -131,33 +131,33 @@ class MultiheadAttention(nn.Module):
 
       old_shape = o_weights.shape
       if self.B > 0:
-        o_weights = o_weights.view((self.B, N, -1, tgt_len, src_len))
+        o_weights = o_weights.reshape((self.B, N, -1, tgt_len, src_len))
       else:
-        o_weights = o_weights.view((N, -1, tgt_len, src_len))
+        o_weights = o_weights.reshape((N, -1, tgt_len, src_len))
 
       if attn_mask.dtype == torch.bool:
         o_weights.masked_fill_(attn_mask, float('-inf'))
       else:
         o_weights += attn_mask
-      o_weights = o_weights.view(old_shape)
+      o_weights = o_weights.reshape(old_shape)
 
     o_weights = F.softmax(o_weights, dim=-1)
     o_weights = F.dropout(o_weights, p=self.dropout, training=self.training)
     o = torch.bmm(o_weights, value)
     if self.B > 0:
-      o = o.contiguous().view(self.B, N, self.num_heads, tgt_len, self.head_dim)
-      o = o.transpose(2, 3).contiguous().view(self.B, N, tgt_len, embed_dim)
+      o = o.contiguous().reshape(self.B, N, self.num_heads, tgt_len, self.head_dim)
+      o = o.transpose(2, 3).contiguous().reshape(self.B, N, tgt_len, embed_dim)
     else:
-      o = o.contiguous().view(bsz, self.num_heads, tgt_len, self.head_dim)
-      o = o.transpose(1, 2).contiguous().view(bsz, tgt_len, embed_dim)
+      o = o.contiguous().reshape(bsz, self.num_heads, tgt_len, self.head_dim)
+      o = o.transpose(1, 2).contiguous().reshape(bsz, tgt_len, embed_dim)
     o = self.linear_o(o)
 
     if need_weights:
       # average attention weights over heads
-      o_weights = o_weights.view(bsz, self.num_heads, tgt_len, src_len)
+      o_weights = o_weights.reshape(bsz, self.num_heads, tgt_len, src_len)
       o_weights = o_weights.sum(dim=1) / self.num_heads
       if (self.B > 0):
-        o_weights = o_weights.view(self.B, N, tgt_len, src_len)
+        o_weights = o_weights.reshape(self.B, N, tgt_len, src_len)
       return o, o_weights
     else:
       return o, None
@@ -170,7 +170,7 @@ class MultiheadAttention(nn.Module):
     """
     batch_size, seq_len, _ = x.size()
     res = torch.tril(torch.ones(seq_len, seq_len))
-    return res.view(1, seq_len, seq_len).repeat(batch_size, 1, 1)
+    return res.reshape(1, seq_len, seq_len).repeat(batch_size, 1, 1)
 
   def extra_repr(self):
     return 'in_features={}, head_num={}, bias={}, activation={}, B={}'.format(
@@ -190,41 +190,41 @@ class MultiheadAttention(nn.Module):
 
     tmp_weight = other.in_proj_weight.reshape(3, self.embed_dim, self.embed_dim)
     if b > 0:
-      self.linear_q.weight.data[b - 1] = tmp_weight[0].transpose(0, 1).view(
+      self.linear_q.weight.data[b - 1] = tmp_weight[0].transpose(0, 1).reshape(
           self.linear_q.weight.data[b - 1].shape)
-      self.linear_k.weight.data[b - 1] = tmp_weight[1].transpose(0, 1).view(
+      self.linear_k.weight.data[b - 1] = tmp_weight[1].transpose(0, 1).reshape(
           self.linear_k.weight.data[b - 1].shape)
-      self.linear_v.weight.data[b - 1] = tmp_weight[2].transpose(0, 1).view(
+      self.linear_v.weight.data[b - 1] = tmp_weight[2].transpose(0, 1).reshape(
           self.linear_v.weight.data[b - 1].shape)
       self.linear_o.weight.data[b - 1] = other.out_proj.weight.data.transpose(
-          0, 1).view(self.linear_o.weight.data[b - 1].shape)
-      self.linear_o.bias.data[b - 1] = other.out_proj.bias.data.view(
+          0, 1).reshape(self.linear_o.weight.data[b - 1].shape)
+      self.linear_o.bias.data[b - 1] = other.out_proj.bias.data.reshape(
           self.linear_o.bias.data[b - 1].shape)
     else:
-      self.linear_q.weight.data = tmp_weight[0].view(
+      self.linear_q.weight.data = tmp_weight[0].reshape(
           self.linear_q.weight.data.shape)
-      self.linear_k.weight.data = tmp_weight[1].view(
+      self.linear_k.weight.data = tmp_weight[1].reshape(
           self.linear_k.weight.data.shape)
-      self.linear_v.weight.data = tmp_weight[2].view(
+      self.linear_v.weight.data = tmp_weight[2].reshape(
           self.linear_v.weight.data.shape)
-      self.linear_o.weight.data = other.out_proj.weight.data.view(
+      self.linear_o.weight.data = other.out_proj.weight.data.reshape(
           self.linear_o.weight.data.shape)
-      self.linear_o.bias.data = other.out_proj.bias.data.view(
+      self.linear_o.bias.data = other.out_proj.bias.data.reshape(
           self.linear_o.bias.data.shape)
 
     if self.bias:
       tmp_bias = other.in_proj_bias.reshape(3, self.embed_dim)
       if b > 0:
-        self.linear_q.bias.data[b - 1] = tmp_bias[0].view(
+        self.linear_q.bias.data[b - 1] = tmp_bias[0].reshape(
             self.linear_q.bias.data[b - 1].shape)
-        self.linear_k.bias.data[b - 1] = tmp_bias[1].view(
+        self.linear_k.bias.data[b - 1] = tmp_bias[1].reshape(
             self.linear_k.bias.data[b - 1].shape)
-        self.linear_v.bias.data[b - 1] = tmp_bias[2].view(
+        self.linear_v.bias.data[b - 1] = tmp_bias[2].reshape(
             self.linear_v.bias.data[b - 1].shape)
       else:
-        self.linear_q.bias.data = tmp_bias[0].view(
+        self.linear_q.bias.data = tmp_bias[0].reshape(
             self.linear_q.bias.data.shape)
-        self.linear_k.bias.data = tmp_bias[1].view(
+        self.linear_k.bias.data = tmp_bias[1].reshape(
             self.linear_k.bias.data.shape)
-        self.linear_v.bias.data = tmp_bias[2].view(
+        self.linear_v.bias.data = tmp_bias[2].reshape(
             self.linear_v.bias.data.shape)
