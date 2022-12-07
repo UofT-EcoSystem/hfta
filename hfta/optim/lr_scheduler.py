@@ -244,13 +244,19 @@ class StepLR(_LRScheduler):
         }
     else:
       if isinstance(multiplier, (int, float)):
-        res = this_lr * multiplier
+        if isinstance(this_lr, Coefficient):
+            this_lr._value = this_lr[params[0]] * multiplier
+            this_lr._update_ddt_map(params[0].device, params[0].dtype)
+            res = this_lr
+        else:
+          res = this_lr * multiplier
       else:
         multiplier_map = _get_coeff_like_params_map(multiplier, params, self.B)
         res = {
             p: this_lr * mul.to(p.device) for p, mul in multiplier_map.items()
         }
     return res
+
 
   def get_lr(self):
     with torch.no_grad():
