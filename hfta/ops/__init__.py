@@ -27,15 +27,39 @@ _OPS_MAP = {
     torch.nn.Embedding: Embedding,
 }
 
-_HFTA_TORCH_IDENTICAL_OPS = {
-    torch.nn.Identity,
+_TORCH_NN_ELEWISE = {
+    torch.nn.ELU,
+    torch.nn.Hardshrink,
+    torch.nn.Hardsigmoid,
+    torch.nn.Hardtanh,
+    torch.nn.Hardswish,
+    torch.nn.LeakyReLU,
+    torch.nn.LogSigmoid,
+    torch.nn.PReLU,
     torch.nn.ReLU,
     torch.nn.ReLU6,
+    torch.nn.RReLU,
+    torch.nn.SELU,
+    torch.nn.CELU,
+    torch.nn.GELU,
+    torch.nn.Sigmoid,
+    torch.nn.SiLU,
+    torch.nn.Mish,
+    torch.nn.Softplus,
+    torch.nn.Softshrink,
+    torch.nn.Softsign,
     torch.nn.Tanh,
-    torch.nn.LeakyReLU,
+    torch.nn.Tanhshrink,
+    torch.nn.Threshold,
+}
+
+_HFTA_TORCH_IDENTICAL_OPS = {
+    torch.nn.Identity,
     torch.nn.Dropout,
     torch.nn.TransformerEncoder,
 }
+
+_HFTA_TORCH_IDENTICAL_OPS.update(_TORCH_NN_ELEWISE)
 
 
 def get_hfta_op_for(torch_op_class, B=1):
